@@ -4,6 +4,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
 
 using namespace std::chrono_literals;
 
@@ -32,12 +33,18 @@ public:
             "/color/image", 10, std::bind(&MinimalPublisher::send, this, std::placeholders::_1));
 		depth_subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
             "/depth/image", 10, std::bind(&MinimalPublisher::save_depth_data, this, std::placeholders::_1));
-		
+		lidar_subscription_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
+            "/scan", 10, std::bind(&MinimalPublisher::save_lidar_data, this, std::placeholders::_1));
 		
 	}
 
 private:
 	float* depth=nullptr;
+	float lidar[3];
+	float lidar_val = 0;
+	int lidar_id = 0;
+	float padding=0.5;
+	bool rotate = false;
 	inline float depth_remap(float dep)
 	{
 		if (dep>100)
@@ -52,21 +59,37 @@ private:
 	{
 		if (!depth)
 			depth = new float[msg.width*msg.height];
-		memcpy(depth,msg.data.data(),msg.width*msg.height*sizeof(float));
-		
+		std::memcpy(depth,msg.data.data(),sizeof(float)*msg.width*msg.height);
+		// depth = (float*)msg.data.data();
+	}
+	void save_lidar_data(const sensor_msgs::msg::LaserScan& msg)
+	{
+		lidar[0] = msg.ranges[(int)(1.57/msg.angle_increment)]; //right
+		lidar[1] = msg.ranges[0]; //forward
+		lidar[2] = msg.ranges[(int)((3.14+1.57)/msg.angle_increment)]; //left
+		for (int i=0;i<3;i++)
+			if (lidar[i]<0)
+					lidar[i] = 0.01;
 	}
     void send(const sensor_msgs::msg::Image& msg)
     {
  		if (!depth)
 			return;
-        geometry_msgs::msg::Twist res;
+		geometry_msgs::msg::Twist res;
+		if(rotate) {
+			if (std::abs(lidar[lidar_id] - lidar_val) < 0.01 && rotate) {
+				rotate = false;
+				res.angular.z = 0;
+				publisher_->publish(res);
+				RCLCPP_INFO(get_logger(), "rotating finished");
+			}
+			return;
+		}
+        
 		const uint32_t strings_cnt = 10;
 		const RGB8 *image;
 		float *dph;
-		//Useless code don't touch it
-		
-		// std::cout<<depth[0]<<std::endl;
-		//std::cout<<depth[(msg.height-0*5-1)*(msg.width)]<<std::endl;
+		rclcpp::Rate loop_rate(10);
 		for (uint32_t i = 0;i<strings_cnt;i++)
 		{
 			image = &(reinterpret_cast<const RGB8*>(msg.data.data())[(msg.height-i*5-1)*(msg.width)]);
@@ -102,17 +125,47 @@ private:
 			if (std::abs(diff)<(20*(i+1)*tan(30.0f/180*M_PI)))
 				res.linear.x += 0.5*wtf*wtf;
 			else
-				res.angular.z += -atan2(diff,5*(i+1))*wtf*wtf*wtf;
+				res.angular.z += -atan2(diff,5*(i+1))*wtf*wtf*wtf;			
+			
+
 		}
 		// res.linear.x += 0.08;
-		res.angular.z *= 2.0f/(1+strings_cnt);
+		if (depth[msg.height/2*msg.width + msg.width/2]>100)
+			res.linear.x -= 0.6;
+		res.angular.z *= 2.0f/(2+strings_cnt);
 		res.linear.x *= 2.0f/(1+strings_cnt);
+		
+		if (lidar[1]<0.35)
+		{
+			rotate = true;
+			res.linear.x = 0;
+			if (lidar[0]<padding && lidar[2]<padding)
+			{
+				//TRUDNO
+			}
+			else if (lidar[0]<padding)
+			{
+				lidar_val = lidar[1];
+				res.angular.z += -3.14/2;
+				lidar_id = 0;
+			}
+			else{
+				res.angular.z += 3.14/2;
+				lidar_val = lidar[1];
+				lidar_id = 2;
+			}
+			RCLCPP_INFO(get_logger(), "rotating");
+		}
+	
         publisher_->publish(res);
+		
+		
 		// rclcpp::shutdown();
     }
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr cam_subscription_;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr depth_subscription_;
+    rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_subscription_;
 
 };
 
