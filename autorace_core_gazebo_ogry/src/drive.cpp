@@ -39,12 +39,12 @@ public:
 	}
 
 private:
-	float* depth=nullptr;
-	float lidar[3];
+	sensor_msgs::msg::LaserScan lidar;
+	float* depth = nullptr;
 	float lidar_val = 0;
 	int lidar_id = 0;
 	float padding=0.5;
-	bool rotate = false;
+
 	inline float depth_remap(float dep)
 	{
 		if (dep>100)
@@ -60,31 +60,34 @@ private:
 		if (!depth)
 			depth = new float[msg.width*msg.height];
 		std::memcpy(depth,msg.data.data(),sizeof(float)*msg.width*msg.height);
-		// depth = (float*)msg.data.data();
 	}
 	void save_lidar_data(const sensor_msgs::msg::LaserScan& msg)
 	{
-		lidar[0] = msg.ranges[(int)(1.57/msg.angle_increment)]; //right
-		lidar[1] = msg.ranges[0]; //forward
-		lidar[2] = msg.ranges[(int)((3.14+1.57)/msg.angle_increment)]; //left
-		for (int i=0;i<3;i++)
-			if (lidar[i]<0)
-					lidar[i] = 0.01;
+		lidar = msg;
 	}
     void send(const sensor_msgs::msg::Image& msg)
     {
  		if (!depth)
 			return;
 		geometry_msgs::msg::Twist res;
-		if(rotate) {
-			if (std::abs(lidar[lidar_id] - lidar_val) < 0.01 && rotate) {
-				rotate = false;
-				res.angular.z = 0;
-				publisher_->publish(res);
-				RCLCPP_INFO(get_logger(), "rotating finished");
+	
+		for (uint32_t i = 1;i<lidar.ranges.size()/4;i++)
+			if (lidar.ranges[i]<0.5)
+			{
+				res.angular.z -= (float)(lidar.ranges.size()/4-i)/(lidar.ranges.size()/4)*0.5;
+				// std::cout<<"asdasf"<<std::endl;
 			}
-			return;
-		}
+				
+
+		for (uint32_t i = lidar.ranges.size()-2;i>lidar.ranges.size()*3/4;i--)
+			if (lidar.ranges[i]<0.5)
+			{
+				res.angular.z += (float)(i-lidar.ranges.size()*3/4)/(lidar.ranges.size()*3/4)*0.5;
+				
+			}
+				
+
+		
         
 		const uint32_t strings_cnt = 10;
 		const RGB8 *image;
@@ -122,7 +125,7 @@ private:
 			int diff = (int)(curr2+curr1)/2-(int)msg.width/2;
 			
 			float wtf = (float)(strings_cnt-i)/strings_cnt;
-			if (std::abs(diff)<(20*(i+1)*tan(30.0f/180*M_PI)))
+			if (std::abs(diff)<(20*(i+1)*tan(40.0f/180.0f*M_PI)))
 				res.linear.x += 0.5*wtf*wtf;
 			else
 				res.angular.z += -atan2(diff,5*(i+1))*wtf*wtf*wtf;			
@@ -135,28 +138,6 @@ private:
 		res.angular.z *= 2.0f/(2+strings_cnt);
 		res.linear.x *= 2.0f/(1+strings_cnt);
 		
-		if (lidar[1]<0.35)
-		{
-			rotate = true;
-			res.linear.x = 0;
-			if (lidar[0]<padding && lidar[2]<padding)
-			{
-				//TRUDNO
-			}
-			else if (lidar[0]<padding)
-			{
-				lidar_val = lidar[1];
-				res.angular.z += -3.14/2;
-				lidar_id = 0;
-			}
-			else{
-				res.angular.z += 3.14/2;
-				lidar_val = lidar[1];
-				lidar_id = 2;
-			}
-			RCLCPP_INFO(get_logger(), "rotating");
-		}
-	
         publisher_->publish(res);
 		
 		
