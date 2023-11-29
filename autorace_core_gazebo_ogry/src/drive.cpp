@@ -45,6 +45,11 @@ private:
 	int lidar_id = 0;
 	float padding=0.5;
 
+	float last_lin = 0;
+	float last_ang = 0;
+
+	float k_dif=0.1;
+
 	inline float depth_remap(float dep)
 	{
 		if (dep>100)
@@ -53,7 +58,7 @@ private:
 	}
 	inline bool is_road(const RGB8* image,float* dph,uint32_t idx)
 	{
-		return (convert_to_gray(image[idx])*depth_remap(dph[idx])<1);
+		return (convert_to_gray(image[idx])*dph[idx]<0.5);
 	}
 	void save_depth_data(const sensor_msgs::msg::Image& msg)
 	{
@@ -70,26 +75,13 @@ private:
  		if (!depth)
 			return;
 		geometry_msgs::msg::Twist res;
-	
-		for (uint32_t i = 1;i<lidar.ranges.size()/4;i++)
-			if (lidar.ranges[i]<0.5)
-			{
-				res.angular.z -= (float)(lidar.ranges.size()/4-i)/(lidar.ranges.size()/4)*0.5;
-				// std::cout<<"asdasf"<<std::endl;
-			}
-				
 
-		for (uint32_t i = lidar.ranges.size()-2;i>lidar.ranges.size()*3/4;i--)
-			if (lidar.ranges[i]<0.5)
-			{
-				res.angular.z += (float)(i-lidar.ranges.size()*3/4)/(lidar.ranges.size()*3/4)*0.5;
-				
-			}
+		
 				
 
 		
         
-		const uint32_t strings_cnt = 10;
+		uint32_t strings_cnt = 20;
 		const RGB8 *image;
 		float *dph;
 		rclcpp::Rate loop_rate(10);
@@ -106,7 +98,11 @@ private:
 			while (curr2<msg.width-1 && !is_road(image,dph,curr2))
 				curr2++;
 			// std::cout<<convert_to_gray(image[curr2])<<" "<<curr2<<std::endl;
-			
+			if (curr1==0 && curr2==msg.width-1)
+			{
+				strings_cnt = i+1;
+				break;	
+			}
 			if (msg.width/2-curr1 < curr2-msg.width/2)
 				curr2 = curr1;	
 			else
@@ -125,7 +121,7 @@ private:
 			int diff = (int)(curr2+curr1)/2-(int)msg.width/2;
 			
 			float wtf = (float)(strings_cnt-i)/strings_cnt;
-			if (std::abs(diff)<(20*(i+1)*tan(40.0f/180.0f*M_PI)))
+			if (std::abs(diff)<(40+5*(i+1)*tan(40.0f/180.0f*M_PI)) || abs(last_ang-atan2(diff,5*(i+1)))<0.1)
 				res.linear.x += 0.5*wtf*wtf;
 			else
 				res.angular.z += -atan2(diff,5*(i+1))*wtf*wtf*wtf;			
@@ -133,14 +129,51 @@ private:
 
 		}
 		// res.linear.x += 0.08;
-		if (depth[msg.height/2*msg.width + msg.width/2]>100)
-			res.linear.x -= 0.6;
+		// if (depth[msg.height/2*msg.width + msg.width/2]>100)
+		// 	res.linear.x -= 0.6;
 		res.angular.z *= 2.0f/(2+strings_cnt);
 		res.linear.x *= 2.0f/(1+strings_cnt);
 		
+		const float x_s = 0.5;
+		const float part = 1.0f/6;
+		for (uint32_t i = 1;i<lidar.ranges.size()*part;i++)
+		{
+			if (lidar.ranges[i]<0.5)
+			{
+				float alpha = (i+1)*lidar.angle_increment;
+				float x = sin(alpha)*lidar.ranges[i];
+				float y = cos(alpha)*lidar.ranges[i];
+				res.angular.z -= atan((x_s-x)/y)*0.5;
+				break;
+			}
+		}
+			
+				
+
+		for (uint32_t i = lidar.ranges.size()-2;i>lidar.ranges.size()*(1-part);i--)
+		{			
+			if (lidar.ranges[i]<0.5)
+			{
+				float alpha = (i-lidar.ranges.size()*(1-part)+1)*lidar.angle_increment;
+				float x = sin(alpha)*lidar.ranges[i];
+				float y = cos(alpha)*lidar.ranges[i];
+				res.angular.z += atan((x_s-x)/y)*0.5;
+				break;
+			}
+		}
+
+		
+		if (lidar.ranges[0]<0.2 || lidar.ranges[1]<0.2 || lidar.ranges[lidar.ranges.size()-1]<0.2 ||  lidar.ranges[lidar.ranges.size()-2]<0.2)
+			res.linear.x = -0.3;
+
+		res.linear.x = last_lin*k_dif + (1-k_dif)*res.linear.x;
+		res.angular.z = last_ang*k_dif + (1-k_dif)*res.angular.z;
+
+
         publisher_->publish(res);
 		
-		
+		last_ang = res.angular.z;
+		last_lin = res.linear.x;
 		// rclcpp::shutdown();
     }
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
