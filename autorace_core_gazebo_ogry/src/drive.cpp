@@ -136,35 +136,35 @@ private:
 		
 		const float x_s = 0.5;
 		const float part = 1.0f/6;
-		for (uint32_t i = 1;i<lidar.ranges.size()*part;i++)
-		{
-			if (lidar.ranges[i]<0.5)
-			{
-				float alpha = (i+1)*lidar.angle_increment;
-				float x = sin(alpha)*lidar.ranges[i];
-				float y = cos(alpha)*lidar.ranges[i];
-				res.angular.z -= atan((x_s-x)/y)*0.5;
-				break;
-			}
-		}
+		// for (uint32_t i = 1;i<lidar.ranges.size()*part;i++)
+		// {
+		// 	if (lidar.ranges[i]<0.5)
+		// 	{
+		// 		float alpha = (i+1)*lidar.angle_increment;
+		// 		float x = sin(alpha)*lidar.ranges[i];
+		// 		float y = cos(alpha)*lidar.ranges[i];
+		// 		res.angular.z -= atan((x_s-x)/y)*0.5;
+		// 		break;
+		// 	}
+		// }
 			
 				
 
-		for (uint32_t i = lidar.ranges.size()-2;i>lidar.ranges.size()*(1-part);i--)
-		{			
-			if (lidar.ranges[i]<0.5)
-			{
-				float alpha = (i-lidar.ranges.size()*(1-part)+1)*lidar.angle_increment;
-				float x = sin(alpha)*lidar.ranges[i];
-				float y = cos(alpha)*lidar.ranges[i];
-				res.angular.z += atan((x_s-x)/y)*0.5;
-				break;
-			}
-		}
+		// for (uint32_t i = lidar.ranges.size()-2;i>lidar.ranges.size()*(1-part);i--)
+		// {			
+		// 	if (lidar.ranges[i]<0.5)
+		// 	{
+		// 		float alpha = (i-lidar.ranges.size()*(1-part)+1)*lidar.angle_increment;
+		// 		float x = sin(alpha)*lidar.ranges[i];
+		// 		float y = cos(alpha)*lidar.ranges[i];
+		// 		res.angular.z += atan((x_s-x)/y)*0.5;
+		// 		break;
+		// 	}
+		// }
 
 		
-		if (lidar.ranges[0]<0.2 || lidar.ranges[1]<0.2 || lidar.ranges[lidar.ranges.size()-1]<0.2 ||  lidar.ranges[lidar.ranges.size()-2]<0.2)
-			res.linear.x = -0.3;
+		// if (lidar.ranges[0]<0.2 || lidar.ranges[1]<0.2 || lidar.ranges[lidar.ranges.size()-1]<0.2 ||  lidar.ranges[lidar.ranges.size()-2]<0.2)
+		// 	res.linear.x = -0.3;
 
 		res.linear.x = last_lin*k_dif + (1-k_dif)*res.linear.x;
 		res.angular.z = last_ang*k_dif + (1-k_dif)*res.angular.z;

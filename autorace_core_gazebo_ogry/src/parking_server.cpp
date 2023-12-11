@@ -3,7 +3,7 @@
 #include <thread>
 #include <cmath>
 
-#include "autorace_communication_gazebo_ogry/action/intersection.hpp"
+#include "autorace_communication_gazebo_ogry/action/parking.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "rclcpp_components/register_node_macro.hpp"
@@ -12,13 +12,7 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
-#include "autorace_core_gazebo_ogry/intersection_visibility.h"
-
-enum class Direction {
-  None,
-  Left,
-  Right
-};
+#include "autorace_core_gazebo_ogry/parking_visibility.h"
 
 float calcMSE(float arr1[2], float arr2[2]) {
   float x = arr1[0] - arr2[0];
@@ -30,53 +24,49 @@ float calcMSE(float arr1[2], float arr2[2]) {
 
 namespace missions_action_cpp
 {
-class IntersectionActionServer : public rclcpp::Node
+class ParkingActionServer : public rclcpp::Node
 {
 public:
-  using Intersection = autorace_communication_gazebo_ogry::action::Intersection;
-  using GoalHandleIntersection = rclcpp_action::ServerGoalHandle<Intersection>;
+  using Parking = autorace_communication_gazebo_ogry::action::Parking;
+  using GoalHandleParking = rclcpp_action::ServerGoalHandle<Parking>;
 
-  INTERSECTION_ACTION_CPP_PUBLIC
-  explicit IntersectionActionServer(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
-  : Node("intersection_action_server", options)
+  PARKING_ACTION_CPP_PUBLIC
+  explicit ParkingActionServer(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+  : Node("parking_action_server", options)
   {
     using namespace std::placeholders;
 
-    lidar_subscription_ = create_subscription<sensor_msgs::msg::LaserScan>("/scan", 10, std::bind(&IntersectionActionServer::update_lidar, this, std::placeholders::_1));
-    turn_dir_subscription_= create_subscription<std_msgs::msg::String>("/intersection/turn_dir", 10, std::bind(&IntersectionActionServer::set_turn_dir, this, std::placeholders::_1));
-    odom_subscription_ = create_subscription<nav_msgs::msg::Odometry>("/odom", 10, std::bind(&IntersectionActionServer::update_odom, this, std::placeholders::_1));
+    lidar_subscription_ = create_subscription<sensor_msgs::msg::LaserScan>("/scan", 10, std::bind(&ParkingActionServer::update_lidar, this, std::placeholders::_1));
+    odom_subscription_ = create_subscription<nav_msgs::msg::Odometry>("/odom", 10, std::bind(&ParkingActionServer::update_odom, this, std::placeholders::_1));
 
     vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
     driver_state_ = create_publisher<std_msgs::msg::Bool>("/driver_state", 10);
     
-    this->action_server_ = rclcpp_action::create_server<Intersection>(
+    this->action_server_ = rclcpp_action::create_server<Parking>(
       this,
-      "intersection",
-      std::bind(&IntersectionActionServer::handle_goal, this, _1, _2),
-      std::bind(&IntersectionActionServer::handle_cancel, this, _1),
-      std::bind(&IntersectionActionServer::handle_accepted, this, _1));
+      "parking",
+      std::bind(&ParkingActionServer::handle_goal, this, _1, _2),
+      std::bind(&ParkingActionServer::handle_cancel, this, _1),
+      std::bind(&ParkingActionServer::handle_accepted, this, _1));
   }
 
 private:
-  rclcpp_action::Server<Intersection>::SharedPtr action_server_;
+  rclcpp_action::Server<Parking>::SharedPtr action_server_;
 
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_subscription_;
-  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr turn_dir_subscription_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_subscription_;
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr vel_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr driver_state_;
 
   float current_pose[2] = {0, 0};
-  float goal_pose[2] = {0.70f, 0.98f};
+  float goal_pose[2] = {-0.29f, 3.51f};
   float finish_pose[2] = {-0.11, 0.98};
   float z_angle;
 
-  Direction dir = Direction::None;
-
   rclcpp_action::GoalResponse handle_goal(
     const rclcpp_action::GoalUUID & uuid,
-    std::shared_ptr<const Intersection::Goal> goal)
+    std::shared_ptr<const Parking::Goal> goal)
   {
     // RCLCPP_INFO(this->get_logger(), "Received goal request with order %d", goal->order);
     (void)uuid;
@@ -84,59 +74,43 @@ private:
   }
 
   rclcpp_action::CancelResponse handle_cancel(
-    const std::shared_ptr<GoalHandleIntersection> goal_handle)
+    const std::shared_ptr<GoalHandleParking> goal_handle)
   {
     RCLCPP_INFO(this->get_logger(), "Received request to cancel goal");
     (void)goal_handle;
     return rclcpp_action::CancelResponse::ACCEPT;
   }
 
-  void handle_accepted(const std::shared_ptr<GoalHandleIntersection> goal_handle)
+  void handle_accepted(const std::shared_ptr<GoalHandleParking> goal_handle)
   {
     using namespace std::placeholders;
     // // this needs to return quickly to avoid blocking the executor, so spin up a new thread
-    std::thread{std::bind(&IntersectionActionServer::execute, this, _1), goal_handle}.detach();
+    std::thread{std::bind(&ParkingActionServer::execute, this, _1), goal_handle}.detach();
   }
 
-  void execute(const std::shared_ptr<GoalHandleIntersection> goal_handle)
+  void execute(const std::shared_ptr<GoalHandleParking> goal_handle)
   {
     rclcpp::Rate loop_rate(50);
-    RCLCPP_INFO(get_logger(), "INTERSECTION TASK STARTED");
+    RCLCPP_INFO(get_logger(), "PARKING TASK STARTED");
     
-    while(calcMSE(current_pose, goal_pose) > 0.001) {
+    while(calcMSE(current_pose, goal_pose) > 0.01) {
       loop_rate.sleep();
       //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
     }
     auto driver_state_msg = std_msgs::msg::Bool();
     auto twist = geometry_msgs::msg::Twist();
-    if(dir == Direction::Right){
-      goto success;
-    }
     
     
     driver_state_msg.data = false;
     driver_state_->publish(driver_state_msg);
 
-    turn_to_angle(3.14, loop_rate);
-    switch (dir)
-    {
-    case Direction::Right:
-      turn_to_angle(3.14-3.14/4, loop_rate);
-      break;
-    case Direction::Left:
-      turn_to_angle(-3*3.14/4, loop_rate);
-      break;
-    case Direction::None:
-      RCLCPP_ERROR(get_logger(), "failed to detect turn direction");
-      break;
-    default:
-      break;
-    }
+    turn_to_angle(-1.57075, loop_rate);
+
     twist.linear.x = 0.05;
     vel_publisher_->publish(twist);
     driver_state_msg.data = true;
     driver_state_->publish(driver_state_msg);
-    success:
+
     // Check if goal is done
     while(calcMSE(current_pose, finish_pose) > 0.01) {
       loop_rate.sleep();
@@ -147,14 +121,16 @@ private:
 
     turn_to_angle(3.14, loop_rate);
 
-    driver_state_msg.data = true;
-    driver_state_->publish(driver_state_msg);
+    // driver_state_msg.data = true;
+    // driver_state_->publish(driver_state_msg);
+
+
     
-    auto result = std::make_shared<Intersection::Result>();
+    success:
+    auto result = std::make_shared<Parking::Result>();
     if (rclcpp::ok()) {
-      result->finished = true;
       goal_handle->succeed(result);
-      RCLCPP_INFO(this->get_logger(), "INTERSECTION TASK FINISHED");
+      RCLCPP_INFO(this->get_logger(), "PARKING TASK FINISHED");
     }
   }
 
@@ -188,20 +164,8 @@ private:
       z_angle = std::atan2(t3, t4);
   }
 
-  void set_turn_dir(const std_msgs::msg::String &msg) {
-    if(msg.data == "left") {
-      dir = Direction::Left;
-    }
-    else if(msg.data == "right") {
-      dir = Direction::Right;
-    }
-    else{
-      RCLCPP_ERROR(get_logger(), "unexpected direction");
-    }
-    RCLCPP_INFO(get_logger(), "turn %s", msg.data.c_str());
-  }
-};  // class IntersectionActionServer
+};  // class ParkingActionServer
 
 }  // namespace custom_action_cpp
 
-RCLCPP_COMPONENTS_REGISTER_NODE(missions_action_cpp::IntersectionActionServer)
+RCLCPP_COMPONENTS_REGISTER_NODE(missions_action_cpp::ParkingActionServer)

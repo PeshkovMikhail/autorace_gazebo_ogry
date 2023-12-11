@@ -1,15 +1,34 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from ament_index_python.packages import get_package_share_directory
+import os
 
 def generate_launch_description():
+    missions_path = get_package_share_directory("autorace_missions_gazebo_ogry")
     return LaunchDescription([
         Node(
-            package="autorace_core_gazebo_ogry",
-            executable="driver"
+            package="autorace_camera",
+            executable="image_projection"
         ),
         Node(
-            package="autorace_core_gazebo_ogry",
-            executable="recognizer"
-        )
+            package="test_driver",
+            executable="detect_lane"
+        ),
+        Node(
+            package="test_driver",
+            executable='driver'
+        ),
+        Node(
+            package="test_driver",
+            executable="sign_detector"
+        ),
+        IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(missions_path, "launch", "start_all_action_servers.launch.py"),
+                )
+        ),
+
     ])
     

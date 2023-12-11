@@ -22,14 +22,14 @@ def generate_launch_description():
                     os.path.join(robot_bringup_path, "launch", "autorace_2023.launch.py"),
                 )
             ),
-            Node(
-                package="autorace_camera",
-                executable="core_node_mission"
-            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     os.path.join(core_path, "launch", "autorace_core.launch"),
                 )
+            ),
+            Node(
+                package="referee_console",
+                executable="mission_autorace_2023_referee"
             ),
         ]
     )

@@ -29,15 +29,18 @@ add_executable(recognizer src/recognizer.cpp)
 ament_target_dependencies(recognizer rclcpp geometry_msgs sensor_msgs ament_cmake autorace_communication_gazebo_ogry nav_msgs)
 target_link_libraries(recognizer ${OpenCV_LIBS})
 
+add_executable(image_capture src/image_capture.cpp)
+ament_target_dependencies(image_capture rclcpp sensor_msgs cv_bridge)
+target_link_libraries(image_capture ${OpenCV_LIBS})
 
-add_library(action_server SHARED
+add_library(intersection_server SHARED
   src/intersection_server.cpp)
-target_include_directories(action_server PRIVATE
+target_include_directories(intersection_server PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_definitions(action_server
+target_compile_definitions(intersection_server
   PRIVATE "INTERSECTION_ACTION_CPP_BUILDING_DLL")
-ament_target_dependencies(action_server
+ament_target_dependencies(intersection_server
   "autorace_communication_gazebo_ogry"
   "rclcpp"
   "rclcpp_action"
@@ -45,9 +48,31 @@ ament_target_dependencies(action_server
   "geometry_msgs"
   "nav_msgs"
   "sensor_msgs")
-rclcpp_components_register_node(action_server PLUGIN "intersection_action_cpp::IntersectionActionServer" EXECUTABLE intersection_action_server)
+rclcpp_components_register_node(intersection_server PLUGIN "missions_action_cpp::IntersectionActionServer" EXECUTABLE intersection_action_server)
+
+
+add_library(parking_server SHARED
+  src/parking_server.cpp)
+target_include_directories(parking_server PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_definitions(parking_server
+  PRIVATE "PARKING_ACTION_CPP_BUILDING_DLL")
+ament_target_dependencies(parking_server
+  "autorace_communication_gazebo_ogry"
+  "rclcpp"
+  "rclcpp_action"
+  "rclcpp_components"
+  "geometry_msgs"
+  "nav_msgs"
+  "sensor_msgs")
+rclcpp_components_register_node(parking_server PLUGIN "missions_action_cpp::ParkingActionServer" EXECUTABLE parking_action_server)
+
+
+
 install(TARGETS
-  action_server
+  intersection_server
+  parking_server
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
@@ -55,6 +80,7 @@ install(TARGETS
 install(TARGETS
   driver
   recognizer
+  image_capture
   DESTINATION lib/${PROJECT_NAME})
 
 
