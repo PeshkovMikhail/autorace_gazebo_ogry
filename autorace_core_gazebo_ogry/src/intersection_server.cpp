@@ -27,6 +27,16 @@ float calcMSE(float arr1[2], float arr2[2]) {
   y *= y;
   return (x+y)/2;
 }
+double calculateRotationAngle(double startAngle, double endAngle) {
+    // Разница между конечным и начальным углом
+    double angleDifference = endAngle - startAngle;
+
+    // Приведение разницы к диапазону (-pi, pi]
+    angleDifference = fmod((angleDifference + M_PI), (2 * M_PI)) - M_PI;
+
+    return angleDifference;
+}
+    
 
 namespace missions_action_cpp
 {
@@ -118,6 +128,9 @@ private:
     driver_state_->publish(driver_state_msg);
 
     turn_to_angle(3.14, loop_rate);
+    while(dir == Direction::None){
+      loop_rate.sleep();
+    }
     switch (dir)
     {
     case Direction::Right:
@@ -165,7 +178,7 @@ private:
 
   void turn_to_angle(float angle, rclcpp::Rate &loop_rate) {
     auto twist = geometry_msgs::msg::Twist();
-    if (z_angle > angle)
+    if (calculateRotationAngle(z_angle, angle) < 0)
       twist.angular.z = -0.5;
     else
       twist.angular.z = 0.5;

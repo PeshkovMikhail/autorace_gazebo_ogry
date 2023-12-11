@@ -9,6 +9,13 @@ setup(
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
+        (f'share/{package_name}/images',
+            ['resource/intersection.png',
+             'resource/construction.png',
+             'resource/parking.png',
+             'resource/crosswalk.png',
+             'resource/parking.png',
+             'resource/tunnel.png']),
         ('share/' + package_name, ['package.xml']),
     ],
     install_requires=['setuptools'],
@@ -20,6 +27,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            "sign_detector = autorace_vision_gazebo_ogry.sign_detector:main"
         ],
     },
 )

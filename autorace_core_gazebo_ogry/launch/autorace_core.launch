@@ -9,19 +9,11 @@ def generate_launch_description():
     missions_path = get_package_share_directory("autorace_missions_gazebo_ogry")
     return LaunchDescription([
         Node(
-            package="autorace_camera",
-            executable="image_projection"
-        ),
-        Node(
-            package="test_driver",
-            executable="detect_lane"
-        ),
-        Node(
-            package="test_driver",
+            package="autorace_core_gazebo_ogry",
             executable='driver'
         ),
         Node(
-            package="test_driver",
+            package="autorace_vision_gazebo_ogry",
             executable="sign_detector"
         ),
         IncludeLaunchDescription(

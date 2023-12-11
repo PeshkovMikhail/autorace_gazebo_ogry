@@ -23,15 +23,8 @@ find_package(rclcpp_action REQUIRED)
 find_package(rclcpp_components REQUIRED)
 
 add_executable(driver src/drive.cpp)
-ament_target_dependencies(driver rclcpp geometry_msgs sensor_msgs autorace_communication_gazebo_ogry nav_msgs)
-
-add_executable(recognizer src/recognizer.cpp)
-ament_target_dependencies(recognizer rclcpp geometry_msgs sensor_msgs ament_cmake autorace_communication_gazebo_ogry nav_msgs)
-target_link_libraries(recognizer ${OpenCV_LIBS})
-
-add_executable(image_capture src/image_capture.cpp)
-ament_target_dependencies(image_capture rclcpp sensor_msgs cv_bridge)
-target_link_libraries(image_capture ${OpenCV_LIBS})
+ament_target_dependencies(driver rclcpp geometry_msgs sensor_msgs autorace_communication_gazebo_ogry nav_msgs cv_bridge)
+target_link_libraries(driver ${OpenCV_LIBS})
 
 add_library(intersection_server SHARED
   src/intersection_server.cpp)
@@ -79,8 +72,6 @@ install(TARGETS
 
 install(TARGETS
   driver
-  recognizer
-  image_capture
   DESTINATION lib/${PROJECT_NAME})
 
 
