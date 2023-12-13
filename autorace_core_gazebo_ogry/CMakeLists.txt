@@ -21,10 +21,24 @@ find_package(nav_msgs REQUIRED)
 find_package(autorace_communication_gazebo_ogry REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(PCL REQUIRED)
+
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 add_executable(driver src/drive.cpp)
 ament_target_dependencies(driver rclcpp geometry_msgs sensor_msgs autorace_communication_gazebo_ogry nav_msgs cv_bridge)
 target_link_libraries(driver ${OpenCV_LIBS})
+
+add_executable(test_driver src/test_driver.cpp)
+ament_target_dependencies(test_driver rclcpp geometry_msgs sensor_msgs autorace_communication_gazebo_ogry nav_msgs cv_bridge)
+target_link_libraries(test_driver ${OpenCV_LIBS})
+target_link_libraries (test_driver ${PCL_LIBRARIES})
+
+add_executable(sign_detector src/sign_detector.cpp)
+ament_target_dependencies(sign_detector rclcpp geometry_msgs sensor_msgs autorace_communication_gazebo_ogry nav_msgs cv_bridge)
+target_link_libraries(sign_detector ${OpenCV_LIBS})
 
 add_library(intersection_server SHARED
   src/intersection_server.cpp)
@@ -72,6 +86,8 @@ install(TARGETS
 
 install(TARGETS
   driver
+  sign_detector
+  test_driver
   DESTINATION lib/${PROJECT_NAME})
 
 

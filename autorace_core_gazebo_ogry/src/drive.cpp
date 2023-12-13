@@ -104,12 +104,20 @@ private:
 		
 
 		iis.show = show;
-		auto vector = iis.mrv();
-		
 		geometry_msgs::msg::Twist res;
+		try{
+			auto vector = iis.mrv();
+			res.linear.x = vector.y*0.2;
+			res.angular.z = -atan2(vector.x,vector.y)*0.7;
+		}
+		catch(std::exception e) {
+			std::cout << e.what()<<std::endl;
+		}
+		
+		
+		
 
-		res.linear.x = vector.y*0.2;
-		res.angular.z = -atan2(vector.x,vector.y)*0.7;
+		
 		
 
 		res.angular.z = (1-k_dif)*res.angular.z + k_dif*last_ang;

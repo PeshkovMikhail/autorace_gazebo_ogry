@@ -10,7 +10,7 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package="autorace_core_gazebo_ogry",
-            executable='driver'
+            executable='test_driver'
         ),
         Node(
             package="autorace_vision_gazebo_ogry",

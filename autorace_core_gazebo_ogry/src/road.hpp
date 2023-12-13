@@ -1,13 +1,14 @@
 #include "helper.hpp"
 #include "opencv2/opencv.hpp"
+#include <cmath>
 
 // SETINGS
 const uint32_t ITER_COUNT = 10;
 const float VEC_SIZE = 5;
-const float VEC_FADING = 0.5;
-const float MAX_ANGLE = 10*M_PI/180;
+const float VEC_FADING = 0.6;
+const float MAX_ANGLE = 20*M_PI/180;
 const float ROAD_HEIGHT = 0.10f;
-const float ROAD_ERR = 0.02f;
+const float ROAD_ERR = 0.025f;
 //
 
 
@@ -16,7 +17,7 @@ const float CAM_ANGLE = 0.11;
 const uint32_t CAM_H = 480;
 const uint32_t CAM_W = 848;
 const float CAM_FOV_HOR = 1.51843645;
-const float CAM_FOV_VER = 2 * atan(tan(CAM_FOV_HOR/2)*CAM_H/CAM_W);
+const float CAM_FOV_VER = 2 * std::atan(std::tan(CAM_FOV_HOR/2)*CAM_H/CAM_W);
 //
 
 uint8_t white_l[3] = {0, 0, 230};
@@ -27,11 +28,11 @@ uint8_t yellow_h[3] = {40, 255, 255};
 
 vec<float> to_real_angles(vec<int> coords)
 {
-    coords.y = CAM_H - coords.y -1;
+    coords.y = CAM_H - coords.y - 1;
     vec<float> res;
 
-    res.x = atan(tan(CAM_FOV_HOR/2)*(2*(float)coords.x/CAM_W-1));
-    res.y = CAM_ANGLE + atan(tan(CAM_FOV_VER/2)*(2*(float)coords.y/CAM_H-1));
+    res.x = std::atan(std::tan(CAM_FOV_HOR/2.0f)*(2.0f*(float)coords.x/((float)CAM_W-1.0f)-1.0f));
+    res.y = CAM_ANGLE + std::atan(std::tan(CAM_FOV_VER/2.0f)*(2.0f*(float)coords.y/((float)CAM_H-1.0f)-1.0f));
     
     return res;
 }
@@ -69,11 +70,6 @@ T image_remap(const T* image,vec<int> ind)
 
 class IIS
 {
-	float lidar_val = 0;
-	int lidar_id = 0;
-	float padding=0.5;
-	vec<float> start_vec = {0,1};
-
 	float last_lin = 0;
 	float last_ang = 0;
 	
@@ -115,13 +111,12 @@ public:
 
         // auto pt = image_remap(cloud,coords);
         // RCLCPP_INFO(this->get_logger(),"%f\n",z);
-        if (abs(z-ROAD_HEIGHT)<ROAD_ERR)
-        {
-            float coef = ROAD_HEIGHT/z;
+      
+        float coef = ROAD_HEIGHT/z;
 
-            res.x *= coef;
-            res.y *= coef;
-        }
+        res.x *= coef;
+        res.y *= coef;
+    
         
         // res.x = pt.y;
         // res.y = pt.x;
@@ -131,10 +126,11 @@ public:
 
     vec<int> road_coords_2_img(vec<float> coords)
     {
-        
-        auto i = (coords.x/(coords.y*tan(CAM_FOV_HOR/2))+1)/2*(CAM_W-1);
-        auto j = (CAM_H-1)/2*(tan(std::atan2(0.11,coords.y)-CAM_ANGLE)/tan(CAM_FOV_VER/2)+1);
+        // std::cout<<"COORDS WTF "<<coords.x<<" "<<coords.y<<" "<<tan(CAM_FOV_HOR/2)<<std::endl;
+        auto i = (coords.x/(coords.y*std::tan(CAM_FOV_HOR/2.0f))+1.0f)/2.0f*((float)CAM_W-1.0f);
+        auto j = ((float)CAM_H-1.0f)/2.0f*(std::tan(std::atan2(ROAD_HEIGHT,coords.y)-CAM_ANGLE)/std::tan(CAM_FOV_VER/2.0f)+1.0f);
         j = CAM_H - j -1;
+        // std::cout<<"COORDS WTF "<<i<<" "<<j<<std::endl;
         return vec<float>(i,j).round();
     }
 
@@ -170,11 +166,11 @@ public:
         return res;
     }
 
-    std::vector<vec<float>> check_down(vec<int> coord1,vec<int> coord2)
+    std::vector<vec<float>> check_down(vec<float> coord1,vec<float> coord2)
     {
         std::vector<vec<float>> res(2);
-        res[0] = img_coords_translate_2_road(coord1);
-        res[1] = img_coords_translate_2_road(coord2);
+        res[0] = img_coords_translate_2_road(coord1.round());
+        res[1] = img_coords_translate_2_road(coord2.round());
         if (coord1.y == 0)
         {
             auto n_coord = get_intersection(res[0],res[1],0);
@@ -218,11 +214,11 @@ public:
             l.x++; 
 
         while (r.x >=0 && isroad(r))
-            r.x--;
-        
+                    r.x--;
+                
         l.x--;
         r.x++;
-        return (l+r)/2;
+        return road_coords_2_img((img_coords_translate_2_road(l)+img_coords_translate_2_road(r))/2);
     }
 
     vec<float> mrv()
@@ -241,7 +237,7 @@ public:
         vectors.push_back(vec<float>(0,VEC_SIZE));
         
         auto perp = draw_line(vec<float>(vectors.back().y,-vectors.back().x),points.back() + vectors.back());
-
+        // std::cout<<"FISRT POINT VEC "<<points.back().x<<" "<<points.back().y<<std::endl;
         
         for (int iter=0;iter<ITER_COUNT;iter++)
         {
@@ -301,33 +297,58 @@ public:
                 if (left.x>right.x)
                     std::swap(left,right);                       
             }
-
+            // std::cout<<"NOT REAL "<<left<<" "<<right<<std::endl;
             auto new_coords = check_down(left,right);
             left = new_coords[0];
             right = new_coords[1];
 
+            // std::cout<<"REAL "<<left<<" "<<right<<std::endl;
+
             auto p_new = road_coords_2_img((left+right)/2);
             auto n_w = vec<float>(p_new - now_point).normalize()*VEC_SIZE;
+            // std::cout<<"DO PIZDECA "<<n_w.x<<" "<<n_w.y<<std::endl;
             n_w  = n_w*VEC_FADING+now_vec*(1-VEC_FADING);
-
-            auto angle = acos((n_w*now_vec)/(n_w.len()*now_vec.len()));
-            if (abs(angle)>MAX_ANGLE)
-                n_w = vec<float>(now_vec.x*cos(MAX_ANGLE)-now_vec.y*sin(MAX_ANGLE),now_vec.x*sin(MAX_ANGLE)+now_vec.y*cos(MAX_ANGLE))*sign(angle);
+            // std::cout<<"RESULT VECTOR "<<n_w<<std::endl;
+            // auto angle = std::acos((n_w*now_vec)/(VEC_SIZE*VEC_SIZE));
+            // std::cout<<"ANGLE "<<angle<<std::endl;
+            // if (abs(angle)>MAX_ANGLE)
+            //     n_w = vec<float>(now_vec.x*cos(MAX_ANGLE)-now_vec.y*sin(MAX_ANGLE),now_vec.x*sin(MAX_ANGLE)+now_vec.y*cos(MAX_ANGLE))*-sign(angle);
 
             points.push_back(n_w+now_point);
+            // std::cout<<"NEXT POINT "<<points.back().x<<" "<<points.back().y<<std::endl;
+            for (int i =-2;i<3;i++)
+            {
+                for (int j = -2;j<3;j++)
+                    show->image.at<RGB8>(479 - (i+(int)round(points.back().y)), (j+(int)round(points.back().x))) = {255, 0, 0};
+            }
             vectors.push_back(n_w);
 
-            auto perp_vec = (left+right)/2 - img_coords_translate_2_road(points[points.size()-2].round());
+            auto perp_vec = img_coords_translate_2_road(points.back().round()) - img_coords_translate_2_road(points[points.size()-2].round());
             auto buff = perp_vec;
+            // std::cout<<"NOT PERP VEC "<<perp_vec.x<<" "<<perp_vec.y<<std::endl;
+            //std::cout<<"LEFT VEC "<<((left+right)/2).x<<" "<<((left+right)/2).y<<std::endl;
+            //std::cout<<"NEW VEC "<<n_w.x<<" "<<n_w.y<<std::endl;
             perp_vec.x = buff.y;
             perp_vec.y = -buff.x;
 
-            perp_vec = perp_vec + img_coords_translate_2_road(points.back());
+            // perp_vec= perp_vec.normalize();
+            // std::cout<<"PERP VEC "<<perp_vec.x<<" "<<perp_vec.y<<std::endl;
+            perp_vec = perp_vec + img_coords_translate_2_road(points.back().round());
+            // std::cout<<"PERP VEC "<<perp_vec.x<<" "<<perp_vec.y<<std::endl;
+            // std::cout<<"LAST POINT VEC "<<points.back().x<<" "<<points.back().y<<std::endl;
+            // std::cout<<"IMG COORDS "<<road_coords_2_img(perp_vec).x<<" "<<road_coords_2_img(perp_vec).y<<std::endl;
             perp_vec = road_coords_2_img(perp_vec)-points.back();
 
+            // std::cout<<"PERP VEC IN COORDS "<<perp_vec.x<<" "<<perp_vec.y<<std::endl;
             perp = draw_line(perp_vec,points.back() + vectors.back());
 
+            // std::cout<<"VERTICAL "<<perp.x<<" "<<perp.y<<" "<<perp.z<<std::endl;
+            
+
         }
+
+        
+        
         auto PIZDEC = img_coords_translate_2_road(points.back().round())-img_coords_translate_2_road(vec<int>(424,0));
         return PIZDEC.normalize();
     }
