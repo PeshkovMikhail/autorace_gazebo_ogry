@@ -18,7 +18,7 @@ THRESHOLD = 10
 
 
 def open_image(sift, path):
-    img = cv2.imread(path)
+    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     if img is None:
         raise FileNotFoundError(f"{path} not found")
     kp, des = sift.detectAndCompute(img, None)
@@ -40,17 +40,15 @@ class SignDetector(Node):
     def __init__(self):
         super().__init__("sign_detector")
         self.img_subscription = self.create_subscription(Image, "/color/image", self.detect, 10)
-        self.depth_subscription = self.create_subscription(Image, "/depth/image", self.update_depth, 10)
         self.driver_state = self.create_publisher(Bool, "/driver_state", 10)
         self.turn_direction = self.create_publisher(String, '/intersection/turn_dir', 10)
 
-        self.depth = None
         # autorace_communication_gazebo_ogry.action
         self.action_servers = {
             "intersection_sign": (ActionClient(self, Intersection, "intersection"), Intersection.Goal(direction = "none")),
             "construction_sign": (ActionClient(self, Obstacles, "construction"), Obstacles.Goal()),
             "parking_sign": (ActionClient(self, Parking, "parking"), Parking.Goal()),
-            "crossing_sign": (ActionClient(self, Crosswalk, "crossing"), Crosswalk.Goal()),
+            "crossing_sign": (ActionClient(self, Crosswalk, "crosswalk"), Crosswalk.Goal()),
             "tunnel_sign": (ActionClient(self, Tunnel, "tunnel"), Tunnel.Goal())
         }
 
@@ -58,7 +56,7 @@ class SignDetector(Node):
             self.get_logger().info('Waiting {0} server'.format(key))
             client.wait_for_server()
 
-
+        self.get_logger().info("ALL ACTION SERVERS STARTED")
         self.cvBridge = CvBridge()
 
         FLANN_INDEX_KDTREE = 0
@@ -69,12 +67,11 @@ class SignDetector(Node):
         self.sift = cv2.SIFT_create()
 
         bringup_path = ament_index_python.get_package_share_directory("robot_bringup")
-        intersection_path = os.path.join(bringup_path, "worlds/intersection")
         driver_path = os.path.join(ament_index_python.get_package_share_directory("autorace_vision_gazebo_ogry"), "images")
 
         self.during_action = [
-            ('traffic_left', open_image(self.sift, os.path.join(intersection_path, "traffic_left.png")), MIN_MSE_DECISION),
-            ('traffic_right', open_image(self.sift, os.path.join(intersection_path, "traffic_right.png")), MIN_MSE_DECISION),
+            ('traffic_left', open_image(self.sift, os.path.join(driver_path, "turn_left.png")), MIN_MSE_DECISION),
+            ('traffic_right', open_image(self.sift, os.path.join(driver_path, "turn_right.png")), MIN_MSE_DECISION),
         ]
 
         self.signs = [
@@ -94,45 +91,20 @@ class SignDetector(Node):
 
 
     
-    def getDetected(self, kp, des, img_list, img = None, check_mse=True):
-        
-        found_name = False
-        coef = 0.4 if check_mse else 0.7
-        min_dist = np.inf
-        for (name, (sign_kp, sign_des), min_err) in img_list:
-            matches = self.flann.knnMatch(des, sign_des, k=2)
+    def getDetected(self, des, img_list):
 
+        for name, (kp_, des_), min_mse in img_list:
+            matches = self.flann.knnMatch(des, des_, k=2)
             good_intersection = []
             for m,n in matches:
-                if m.distance < coef*n.distance:
+                if m.distance < 0.55*n.distance:
                     good_intersection.append(m)
-            # self.get_logger().info(f"{name} {len(good_intersection)}")
-            if len(good_intersection) >= THRESHOLD:
-                src_pts = np.float32([kp[m.queryIdx].pt for m in good_intersection ]).reshape(-1,1,2)
-                dst_pts = np.float32([sign_kp[m.trainIdx].pt for m in good_intersection]).reshape(-1,1,2)
-
-                M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
-                matches_right = mask.ravel().tolist()
-                if check_mse:
-                    mse = fnCalcMSE(src_pts, dst_pts)
-                    if mse < min_err:
-                        for px, py in src_pts[:, 0].astype(np.int32):
-                            min_dist = np.min([min_dist, self.depth[py, px]])
-                        # self.get_logger().info(f"{name} {min_dist}") 
-                        if min_dist <= 0.25:
-                            
-                            # self.get_logger().info(f"{name} {len(good_intersection)}")
-                            return name
-                else:
-                    return name
-            # self.get_logger().info(f"{name} {len(good_intersection)}")      
-
+            if len(good_intersection)>=20:
+                return name
         return None
 
     def detect(self, msg):
         self.counter += 1
-        if self.counter % 3 != 0:
-            return
         img = self.cvBridge.imgmsg_to_cv2(msg, "bgr8")
         
         if not self.robot_started:
@@ -144,11 +116,11 @@ class SignDetector(Node):
                 self.driver_state.publish(msg)
             return
         
-        kp, des = self.sift.detectAndCompute(img, None)
+        kp, des = self.sift.detectAndCompute(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), None)
 
 
         if self.action_processing:
-            name = self.getDetected(kp, des, self.during_action, check_mse=False)
+            name = self.getDetected(des, self.during_action)
             if name is None:
                 return
             msg = String()
@@ -160,7 +132,7 @@ class SignDetector(Node):
             return
 
         
-        name = self.getDetected(kp, des, self.signs, img)
+        name = self.getDetected(des, self.signs)
         
         
         if name in self.action_servers.keys():
@@ -174,14 +146,6 @@ class SignDetector(Node):
         
         
         
-
-    def update_depth(self, msg):
-        if self.depth is None:
-            self.depth = np.zeros((480, 848))
-        for y in range(480):
-            for x in range(848):
-                offset = msg.step*y + x*4
-                self.depth[y, x] = struct.unpack("f", msg.data[offset: offset + 4])[0]
     
     def goal_response_callback(self, future):
         goal_handle = future.result()

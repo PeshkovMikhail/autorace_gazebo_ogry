@@ -27,6 +27,7 @@ float calcMSE(float arr1[2], float arr2[2]) {
   y *= y;
   return (x+y)/2;
 }
+
 double calculateRotationAngle(double startAngle, double endAngle) {
     // Разница между конечным и начальным углом
     double angleDifference = endAngle - startAngle;

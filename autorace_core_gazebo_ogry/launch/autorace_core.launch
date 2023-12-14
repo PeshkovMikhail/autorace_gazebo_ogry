@@ -6,10 +6,16 @@ from ament_index_python.packages import get_package_share_directory
 import os
 
 def generate_launch_description():
+    core_path = get_package_share_directory("autorace_core_gazebo_ogry")
     return LaunchDescription([
         Node(
             package="autorace_core_gazebo_ogry",
-            executable='test_driver'
+            executable='driver'
+        ),
+        IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(core_path, "launch", "start_all_actions.launch.py"),
+                )
         ),
         Node(
             package="autorace_vision_gazebo_ogry",

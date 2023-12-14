@@ -93,40 +93,7 @@ private:
     rclcpp::Rate loop_rate(50);
     RCLCPP_INFO(get_logger(), "PARKING TASK STARTED");
     
-    while(calcMSE(current_pose, goal_pose) > 0.01) {
-      loop_rate.sleep();
-      //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
-    }
-    auto driver_state_msg = std_msgs::msg::Bool();
-    auto twist = geometry_msgs::msg::Twist();
     
-    
-    driver_state_msg.data = false;
-    driver_state_->publish(driver_state_msg);
-
-    turn_to_angle(-1.57075, loop_rate);
-
-    twist.linear.x = 0.05;
-    vel_publisher_->publish(twist);
-    driver_state_msg.data = true;
-    driver_state_->publish(driver_state_msg);
-
-    // Check if goal is done
-    while(calcMSE(current_pose, finish_pose) > 0.01) {
-      loop_rate.sleep();
-      //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
-    }
-    driver_state_msg.data = false;
-    driver_state_->publish(driver_state_msg);
-
-    turn_to_angle(3.14, loop_rate);
-
-    // driver_state_msg.data = true;
-    // driver_state_->publish(driver_state_msg);
-
-
-    
-    success:
     auto result = std::make_shared<Parking::Result>();
     if (rclcpp::ok()) {
       goal_handle->succeed(result);

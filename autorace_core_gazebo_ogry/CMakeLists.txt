@@ -57,6 +57,23 @@ ament_target_dependencies(intersection_server
   "sensor_msgs")
 rclcpp_components_register_node(intersection_server PLUGIN "missions_action_cpp::IntersectionActionServer" EXECUTABLE intersection_action_server)
 
+add_library(construction_server SHARED
+  src/construction_server.cpp)
+target_include_directories(construction_server PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_definitions(construction_server
+  PRIVATE "CONSTRUCTION_ACTION_CPP_BUILDING_DLL")
+ament_target_dependencies(construction_server
+  "autorace_communication_gazebo_ogry"
+  "rclcpp"
+  "rclcpp_action"
+  "rclcpp_components"
+  "geometry_msgs"
+  "nav_msgs"
+  "sensor_msgs")
+rclcpp_components_register_node(construction_server PLUGIN "missions_action_cpp::ConstructionServer" EXECUTABLE construction_action_server)
+
 
 add_library(parking_server SHARED
   src/parking_server.cpp)
@@ -75,11 +92,46 @@ ament_target_dependencies(parking_server
   "sensor_msgs")
 rclcpp_components_register_node(parking_server PLUGIN "missions_action_cpp::ParkingActionServer" EXECUTABLE parking_action_server)
 
+add_library(crosswalk_server SHARED
+  src/crosswalk_server.cpp)
+target_include_directories(crosswalk_server PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_definitions(crosswalk_server
+  PRIVATE "CROSSWALK_ACTION_CPP_BUILDING_DLL")
+ament_target_dependencies(crosswalk_server
+  "autorace_communication_gazebo_ogry"
+  "rclcpp"
+  "rclcpp_action"
+  "rclcpp_components"
+  "geometry_msgs"
+  "nav_msgs"
+  "sensor_msgs")
+rclcpp_components_register_node(crosswalk_server PLUGIN "missions_action_cpp::CrosswalkServer" EXECUTABLE crosswalk_action_server)
 
+add_library(tunnel_server SHARED
+  src/tunnel_server.cpp)
+target_include_directories(tunnel_server PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_definitions(tunnel_server
+  PRIVATE "TUNNEL_ACTION_CPP_BUILDING_DLL")
+ament_target_dependencies(tunnel_server
+  "autorace_communication_gazebo_ogry"
+  "rclcpp"
+  "rclcpp_action"
+  "rclcpp_components"
+  "geometry_msgs"
+  "nav_msgs"
+  "sensor_msgs")
+rclcpp_components_register_node(tunnel_server PLUGIN "missions_action_cpp::TunnelServer" EXECUTABLE tunnel_action_server)
 
 install(TARGETS
   intersection_server
+  construction_server
   parking_server
+  crosswalk_server
+  tunnel_server
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
