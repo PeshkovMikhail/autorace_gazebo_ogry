@@ -79,9 +79,11 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr driver_state_;
 
   float current_pose[2] = {0, 0};
-  float goal_pose[2] = {0.70f, 0.98f};
-  float finish_pose[2] = {-0.11, 0.98};
+  float stop_pose[2] = {0.70f, 0.98f};
+  float turn_pose[2] = {0.47f, 0.98f};
+  float finish_pose[2] = {-0.10, 0.98};
   float z_angle;
+  bool await_turn_dir = false;
 
   Direction dir = Direction::None;
 
@@ -112,33 +114,41 @@ private:
   void execute(const std::shared_ptr<GoalHandleIntersection> goal_handle)
   {
     rclcpp::Rate loop_rate(50);
+    await_turn_dir = true;
     RCLCPP_INFO(get_logger(), "INTERSECTION TASK STARTED");
     
-    while(calcMSE(current_pose, goal_pose) > 0.001) {
+    while(calcMSE(current_pose, stop_pose) > 0.001) {
       loop_rate.sleep();
       //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
     }
     auto driver_state_msg = std_msgs::msg::Bool();
     auto twist = geometry_msgs::msg::Twist();
-    if(dir == Direction::Right){
-      goto success;
-    }
-    
+   
     
     driver_state_msg.data = false;
     driver_state_->publish(driver_state_msg);
+    twist.linear.x = 0;
+    vel_publisher_->publish(twist);
 
-    turn_to_angle(3.14, loop_rate);
-    while(dir == Direction::None){
-      loop_rate.sleep();
+    if(dir == Direction::None){
+      dir = Direction::Left;
     }
+    await_turn_dir = false;
+    twist.linear.x = 0.1;
+    vel_publisher_->publish(twist);
+
+    while(calcMSE(current_pose, turn_pose) > 0.01) {
+      loop_rate.sleep();
+      //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
+    }
+
     switch (dir)
     {
     case Direction::Right:
-      turn_to_angle(3.14-3.14/4, loop_rate);
+      turn_to_angle(3*3.14/4, loop_rate, -1);
       break;
     case Direction::Left:
-      turn_to_angle(-3*3.14/4, loop_rate);
+      turn_to_angle(-3*3.14/4, loop_rate, 1);
       break;
     case Direction::None:
       RCLCPP_ERROR(get_logger(), "failed to detect turn direction");
@@ -150,16 +160,17 @@ private:
     vel_publisher_->publish(twist);
     driver_state_msg.data = true;
     driver_state_->publish(driver_state_msg);
-    success:
+
     // Check if goal is done
-    while(calcMSE(current_pose, finish_pose) > 0.01) {
+    while(calcMSE(current_pose, finish_pose) > 0.015) {
       loop_rate.sleep();
       //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
     }
     driver_state_msg.data = false;
     driver_state_->publish(driver_state_msg);
 
-    turn_to_angle(3.14, loop_rate);
+    int sign = dir == Direction::Right ? -1 : 1;
+    turn_to_angle(sign*5*3.14/6, loop_rate, sign);
 
     driver_state_msg.data = true;
     driver_state_->publish(driver_state_msg);
@@ -177,12 +188,9 @@ private:
     // msg.ranges
   }
 
-  void turn_to_angle(float angle, rclcpp::Rate &loop_rate) {
+  void turn_to_angle(float angle, rclcpp::Rate &loop_rate, int sign) {
     auto twist = geometry_msgs::msg::Twist();
-    if (calculateRotationAngle(z_angle, angle) < 0)
-      twist.angular.z = -0.5;
-    else
-      twist.angular.z = 0.5;
+    twist.angular.z = sign*0.5;
 
     vel_publisher_->publish(twist);
     while(std::fabs(z_angle - angle) > 0.01) {
@@ -203,6 +211,9 @@ private:
   }
 
   void set_turn_dir(const std_msgs::msg::String &msg) {
+    if(!await_turn_dir) {
+      return;
+    }
     if(msg.data == "left") {
       dir = Direction::Left;
     }

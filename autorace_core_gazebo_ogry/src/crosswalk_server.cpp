@@ -89,8 +89,6 @@ private:
     void execute(const std::shared_ptr<GoalHandleCrosswalk> goal_handle)
     {
         rclcpp::Rate loop_rate(50);
-        
-
         auto result = std::make_shared<Crosswalk::Result>();
         if (rclcpp::ok()) {
             // result->finished = true;

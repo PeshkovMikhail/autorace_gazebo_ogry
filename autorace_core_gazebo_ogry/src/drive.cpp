@@ -2,12 +2,12 @@
 #include <memory>
 
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/bool.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/point_cloud2_iterator.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 #include "road.hpp"
 
@@ -40,8 +40,7 @@ public:
 		// pointCloud_subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
         //     "/depth/points", 10, std::bind(&MinimalPublisher::save_pointCloud_data, this, std::placeholders::_1));
 		show_pub = this->create_publisher<sensor_msgs::msg::Image>("/show_line", 10);
-		driver_state_subscription_ = this->create_subscription<std_msgs::msg::Bool>(
-			"/driver_state", 10, std::bind(&MinimalPublisher::set_enabled, this, std::placeholders::_1));
+		driver_state_sub_ = create_subscription<std_msgs::msg::Bool>("/driver_state", 10, std::bind(&MinimalPublisher::set_enabled, this, std::placeholders::_1));
 		
 		
 	}
@@ -63,7 +62,7 @@ private:
 	
 	float k_dif=0.2;
 
-	bool driver_state_ = false;
+	bool enabled = false;
 
 	
 	void save_depth_data(const sensor_msgs::msg::Image& msg)
@@ -87,7 +86,7 @@ private:
 		//------\  ^   |
 		//      |  |   |
 		////////////////
-		if (!depth || !driver_state_)
+		if (!depth || !enabled)
 			return;
 
 		auto img_orig = cv_bridge::toCvCopy(msg, "bgr8")->image;
@@ -100,53 +99,46 @@ private:
 		// auto image = (RGB8*)msg.data.data();
 		iis.depth = depth;
 		iis.image = img;
+		iis.lidar = &lidar;
 		//show->image.ptr<RGB8>(479-1)[(int)2]= {255,0,255};
 		
-
-		iis.show = show;
 		geometry_msgs::msg::Twist res;
-		try{
-			auto vector = iis.mrv();
-			res.linear.x = vector.y*0.2;
-			res.angular.z = -atan2(vector.x,vector.y)*0.7;
-		}
-		catch(std::exception e) {
-			std::cout << e.what()<<std::endl;
-		}
+		iis.show = show;
 		
-		
-		
+		auto vector = iis.mrv();
 
-		
-		
+		if (std::isnan(vector.x) || std::isnan(vector.y))
+		{
+			//SUDA POMESTI SWOY KOD ESLI NADO
+			return;
+		}
+
+		res.linear.x = vector.y*0.2;
+		res.angular.z = -atan2(vector.x,vector.y)*0.7;
 
 		res.angular.z = (1-k_dif)*res.angular.z + k_dif*last_ang;
 		res.linear.x = (1-k_dif)*res.linear.x + k_dif*last_lin;
-		if (std::isnan(res.angular.z) || std::isnan(res.linear.x))
-		{
-			res.angular.z = 0;
-			res.angular.x = 0;
-			RCLCPP_INFO(this->get_logger(),"HUETA: %f\n",res.linear.x);
-		}
-		else
-		{
-			publisher_->publish(res);
-			cv_bridge::CvImage out_msg;
-			out_msg.header = msg.header;
-			out_msg.encoding = "rgb8";
-			out_msg.image = img_orig;
-			show_pub->publish(*show->toImageMsg());
-		}
-        	
+		
+			
 		
 		last_ang = res.angular.z;
 		last_lin = res.linear.x;
+
+		publisher_->publish(res);
+		cv_bridge::CvImage out_msg;
+		out_msg.header = msg.header;
+		out_msg.encoding = "rgb8";
+		out_msg.image = img_orig;
+		show_pub->publish(*show->toImageMsg());
+	
+
+		
 		// RCLCPP_INFO(get_logger(), "%f %f", last_lin, last_ang);
 		// rclcpp::shutdown();
     }
 
 	void set_enabled(const std_msgs::msg::Bool& msg) {
-		driver_state_ = msg.data;
+		enabled = msg.data;
 	}
 
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
@@ -155,7 +147,7 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_subscription_;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pointCloud_subscription_;
 	rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr show_pub;
-	rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr driver_state_subscription_;
+	rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr driver_state_sub_;
 };
 
 int main(int argc, char * argv[])

@@ -84,7 +84,18 @@ public:
 	{
 		return sqrt(x*x + y*y);
 	}
+	
+	vec rotate(float angle) {
+		return vec{x*std::cos(angle)-y*std::sin(angle), x*std::sin(angle) + y*std::cos(angle)};
+	}
 };
+
+template <typename T>
+std::ostream& operator<<(std::ostream& os,const vec<T> vector)
+{
+	os<<"("<<vector.x<<", "<<vector.y<<")";
+	return os;
+}	
 
 template <typename T>
 class ray

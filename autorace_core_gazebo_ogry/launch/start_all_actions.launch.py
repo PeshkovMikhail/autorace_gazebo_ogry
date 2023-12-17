@@ -11,10 +11,10 @@ def generate_launch_description():
             package="autorace_core_gazebo_ogry",
             executable='intersection_action_server'
         ),
-        Node(
-            package="autorace_core_gazebo_ogry",
-            executable="construction_action_server"
-        ),
+        # Node(
+        #     package="autorace_core_gazebo_ogry",
+        #     executable="construction_action_server"
+        # ),
         Node(
             package="autorace_core_gazebo_ogry",
             executable="parking_action_server"

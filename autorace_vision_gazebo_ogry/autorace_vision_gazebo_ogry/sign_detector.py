@@ -46,7 +46,7 @@ class SignDetector(Node):
         # autorace_communication_gazebo_ogry.action
         self.action_servers = {
             "intersection_sign": (ActionClient(self, Intersection, "intersection"), Intersection.Goal(direction = "none")),
-            "construction_sign": (ActionClient(self, Obstacles, "construction"), Obstacles.Goal()),
+            # "construction_sign": (ActionClient(self, Obstacles, "construction"), Obstacles.Goal()),
             "parking_sign": (ActionClient(self, Parking, "parking"), Parking.Goal()),
             "crossing_sign": (ActionClient(self, Crosswalk, "crosswalk"), Crosswalk.Goal()),
             "tunnel_sign": (ActionClient(self, Tunnel, "tunnel"), Tunnel.Goal())
@@ -66,7 +66,6 @@ class SignDetector(Node):
         self.flann = cv2.FlannBasedMatcher(index_params, search_params)
         self.sift = cv2.SIFT_create()
 
-        bringup_path = ament_index_python.get_package_share_directory("robot_bringup")
         driver_path = os.path.join(ament_index_python.get_package_share_directory("autorace_vision_gazebo_ogry"), "images")
 
         self.during_action = [
@@ -91,7 +90,7 @@ class SignDetector(Node):
 
 
     
-    def getDetected(self, des, img_list):
+    def getDetected(self, des, img_list, thres = 20):
 
         for name, (kp_, des_), min_mse in img_list:
             matches = self.flann.knnMatch(des, des_, k=2)
@@ -99,7 +98,7 @@ class SignDetector(Node):
             for m,n in matches:
                 if m.distance < 0.55*n.distance:
                     good_intersection.append(m)
-            if len(good_intersection)>=20:
+            if len(good_intersection)>=thres:
                 return name
         return None
 
@@ -116,11 +115,12 @@ class SignDetector(Node):
                 self.driver_state.publish(msg)
             return
         
-        kp, des = self.sift.detectAndCompute(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), None)
+        kp, des = self.sift.detectAndCompute(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)[:280], None)
 
 
         if self.action_processing:
-            name = self.getDetected(des, self.during_action)
+            kp, des = self.sift.detectAndCompute(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), None)
+            name = self.getDetected(des, self.during_action, 10)
             if name is None:
                 return
             msg = String()
