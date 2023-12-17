@@ -10,6 +10,7 @@
 #include <cv_bridge/cv_bridge.h>   
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include "nav_msgs/msg/odometry.hpp"
 
 template <typename T> int sign(T val) {
     return (T(0) < val) - (val < T(0));
@@ -84,10 +85,11 @@ public:
 	{
 		return sqrt(x*x + y*y);
 	}
-	
-	vec rotate(float angle) {
-		return vec{x*std::cos(angle)-y*std::sin(angle), x*std::sin(angle) + y*std::cos(angle)};
+	vec rotate(float angle)
+	{
+		return vec{x*cos(angle)-y*sin(angle),x*sin(angle)+y*cos(angle)};
 	}
+	
 };
 
 template <typename T>

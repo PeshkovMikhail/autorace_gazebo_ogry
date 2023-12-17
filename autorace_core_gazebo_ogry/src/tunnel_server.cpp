@@ -14,6 +14,7 @@
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "autorace_core_gazebo_ogry/tunnel_visibility.h"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 
 using namespace std::placeholders;
 
@@ -29,6 +30,9 @@ using GoalHandleTunnel = rclcpp_action::ServerGoalHandle<Tunnel>;
         lidar_sub_ = create_subscription<sensor_msgs::msg::LaserScan>("/scan", 1, std::bind(&TunnelServer::update_lidar, this, std::placeholders::_1));
         depth_sub_ = create_subscription<sensor_msgs::msg::Image>("/depth/image", 1, std::bind(&TunnelServer::update_depth, this, std::placeholders::_1));
         odom_sub_ = create_subscription<nav_msgs::msg::Odometry>("/odom", 10, std::bind(&TunnelServer::update_odom, this, std::placeholders::_1));
+
+        driver_state_pub_ = create_publisher<std_msgs::msg::Bool>("/driver_state", 10);
+        last_task_pub_ = create_publisher<std_msgs::msg::Bool>("/last_task", 10);
         this->action_server_ = rclcpp_action::create_server<Tunnel>(
             this,
             "tunnel",
@@ -36,11 +40,14 @@ using GoalHandleTunnel = rclcpp_action::ServerGoalHandle<Tunnel>;
             std::bind(&TunnelServer::handle_cancel, this, _1),
             std::bind(&TunnelServer::handle_accepted, this, _1)
         );
+        
     }
 private:
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_sub_;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr depth_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr driver_state_pub_;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr last_task_pub_;
     rclcpp_action::Server<Tunnel>::SharedPtr action_server_;
 
     float* depth = nullptr;
@@ -90,7 +97,30 @@ private:
     void execute(const std::shared_ptr<GoalHandleTunnel> goal_handle)
     {
         rclcpp::Rate loop_rate(50);
+        std_msgs::msg::Bool msg;
+        msg.data = true;
+        last_task_pub_->publish(msg);
+        while (true)
+        {
+            loop_rate.sleep();
+        }
         
+        // std_msgs::msg::Bool enabled;
+        // enabled.data = false;
+
+        // driver_state_pub_->publish(enabled);
+
+        // geometry_msgs::msg::PoseStamped pose;
+        // pose.header.frame_id = "map";
+        // pose.header.stamp = get_clock()->now();
+        
+
+
+        // get_clock()->now();
+
+
+        
+
 
         auto result = std::make_shared<Tunnel::Result>();
         if (rclcpp::ok()) {

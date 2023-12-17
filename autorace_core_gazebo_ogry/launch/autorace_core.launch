@@ -7,6 +7,29 @@ import os
 
 def generate_launch_description():
     core_path = get_package_share_directory("autorace_core_gazebo_ogry")
+    pkg_project_bringup = get_package_share_directory('robot_bringup')
+
+    slam_pkg_path = get_package_share_directory("slam_toolbox")
+
+    slam = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(slam_pkg_path, "launch", "online_async_launch.py"),
+        ),
+        launch_arguments={
+            "use_sim_time": "true",
+            "slam_params_file": os.path.join(
+                pkg_project_bringup, "config", "mapper.yaml"
+            )
+        }.items(),
+    )
+
+    robot_localization_node = Node(
+       package='robot_localization',
+       executable='ekf_node',
+       name='ekf_filter_node',
+       output='screen',
+       parameters=[os.path.join(pkg_project_bringup, 'config/mapper.yaml'), {'use_sim_time': True}]
+    )
     return LaunchDescription([
         Node(
             package="autorace_core_gazebo_ogry",
@@ -21,6 +44,7 @@ def generate_launch_description():
             package="autorace_vision_gazebo_ogry",
             executable="sign_detector"
         ),
-
+        slam,
+        robot_localization_node
     ])
     

@@ -79,6 +79,9 @@ public:
     sensor_msgs::msg::LaserScan* lidar;
 	float* depth = nullptr;
 	point3* cloud = nullptr;
+    vec<float> pos;
+    float angle;
+    float needed_angle=NAN;
     cv::Mat image;
     cv::Mat mask;
     
@@ -453,6 +456,22 @@ public:
         
         return PIZDEC.normalize();
     }
+
     
+    vec<float> random_forest()
+    {
+        if (std::isnan(needed_angle))
+        {
+            needed_angle = angle-45.0f/180*M_PI;
+            if (needed_angle<-M_PI)
+                needed_angle+=M_PI;
+        }
+            
+        vec<float> shwed(1,0);
+        shwed = shwed.rotate(needed_angle-angle);
+
+        return shwed*0.2+mrv()*0.8;
+
+    }
 
 };

@@ -136,6 +136,7 @@ class SignDetector(Node):
         
         
         if name in self.action_servers.keys():
+            self.get_logger().info(name)
             (client, cls) = self.action_servers[name]
             client.wait_for_server()
             goal = cls

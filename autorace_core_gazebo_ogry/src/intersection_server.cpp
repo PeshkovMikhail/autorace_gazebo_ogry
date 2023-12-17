@@ -162,7 +162,7 @@ private:
     driver_state_->publish(driver_state_msg);
 
     // Check if goal is done
-    while(calcMSE(current_pose, finish_pose) > 0.015) {
+    while(calcMSE(current_pose, finish_pose) > 0.005) {
       loop_rate.sleep();
       //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
     }

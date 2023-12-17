@@ -8,7 +8,7 @@
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "rclcpp_components/register_node_macro.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/string.hpp"
+#include "std_msgs/msg/float32.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
@@ -52,6 +52,7 @@ public:
 
     vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
     driver_state_ = create_publisher<std_msgs::msg::Bool>("/driver_state", 10);
+    driver_vel_ = create_publisher<std_msgs::msg::Float32>("/driver_vel", 10);
     
     this->action_server_ = rclcpp_action::create_server<Parking>(
       this,
@@ -70,6 +71,7 @@ private:
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr vel_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr driver_state_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr driver_vel_;
 
   float current_pose[2] = {0, 0};
   float goal_pose[2] = {-0.55f, 3.51f};
@@ -108,11 +110,15 @@ private:
   {
     rclcpp::Rate loop_rate(50);
     std_msgs::msg::Bool driver_state;
+    std_msgs::msg::Float32 drive_vel;
     geometry_msgs::msg::Twist twist;
+
+    drive_vel.data = 0.2;
+    driver_vel_->publish(drive_vel);
     
     RCLCPP_INFO(get_logger(), "PARKING TASK STARTED");
 
-    while(calcMSE(current_pose, turn_pose) > 0.005) {
+    while(calcMSE(current_pose, turn_pose) > 0.001) {
       loop_rate.sleep();
     }
     driver_state.data = false;
@@ -211,6 +217,9 @@ private:
     }
 
     turn_to_angle(3.14, loop_rate, 1);
+
+    drive_vel.data = 0.3;
+    driver_vel_->publish(drive_vel);
 
     driver_state.data = true;
     driver_state_->publish(driver_state);
