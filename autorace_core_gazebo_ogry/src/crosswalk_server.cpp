@@ -15,6 +15,7 @@
 #include "sensor_msgs/msg/image.hpp"
 #include "autorace_core_gazebo_ogry/crosswalk_visibility.h"
 
+
 using namespace std::placeholders;
 
 namespace missions_action_cpp
@@ -28,6 +29,9 @@ using GoalHandleCrosswalk = rclcpp_action::ServerGoalHandle<Crosswalk>;
         lidar_sub_ = create_subscription<sensor_msgs::msg::LaserScan>("/scan", 1, std::bind(&CrosswalkServer::update_lidar, this, std::placeholders::_1));
         depth_sub_ = create_subscription<sensor_msgs::msg::Image>("/depth/image", 1, std::bind(&CrosswalkServer::update_depth, this, std::placeholders::_1));
         odom_sub_ = create_subscription<nav_msgs::msg::Odometry>("/odom", 10, std::bind(&CrosswalkServer::update_odom, this, std::placeholders::_1));
+        
+        driver_state_pub_ = create_publisher<std_msgs::msg::Bool>("/driver_state", 10);
+
         this->action_server_ = rclcpp_action::create_server<Crosswalk>(
             this,
             "crosswalk",
@@ -35,12 +39,16 @@ using GoalHandleCrosswalk = rclcpp_action::ServerGoalHandle<Crosswalk>;
             std::bind(&CrosswalkServer::handle_cancel, this, _1),
             std::bind(&CrosswalkServer::handle_accepted, this, _1)
         );
+
+
     }
 private:
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_sub_;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr depth_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr driver_state_pub_;
     rclcpp_action::Server<Crosswalk>::SharedPtr action_server_;
+    
 
     float* depth = nullptr;
     sensor_msgs::msg::LaserScan lidar;
@@ -94,16 +102,39 @@ private:
         auto result = std::make_shared<Crosswalk::Result>();
 
 
-        float angle = 30.0f/180*M_PI;
 
-        int count = angle*lidar.angle_increment;
-        int size = (6.28f)*lidar.angle_increment;
-        for(int i = 0; i < count/2; i++)
-        {
-            if(!std::isinf(lidar.ranges[i])){
+        float max_lidar_angle = 30.0f/2/180*M_PI;
+        float max_distanse = 0.4;
+
+        auto smth = (int)(max_lidar_angle/lidar.angle_increment);
+
+        driver_state.data = false;
+        driver_state_pub_->publish(driver_state);
+        
+        while(true) {
+            bool found = false;
+            for (int i = 0;i<smth;i++)
+                if (lidar.ranges[i]/cos(lidar.angle_increment*i) < max_distanse || lidar.ranges[lidar.ranges.size()-i]/cos(lidar.angle_increment*i) < max_distanse)
+                    found = true;
+            if(!found){
                 break;
             }
         }
+
+        driver_state.data = true;
+        driver_state_pub_->publish(driver_state);
+        
+
+        // float angle = 30.0f/180*M_PI;
+
+        // int count = angle*lidar.angle_increment;
+        // int size = (6.28f)*lidar.angle_increment;
+        // for(int i = 0; i < count/2; i++)
+        // {
+        //     if(!std::isinf(lidar.ranges[i])){
+        //         break;
+        //     }
+        // }
         if (rclcpp::ok()) {
             // result->finished = true;
             goal_handle->succeed(result);

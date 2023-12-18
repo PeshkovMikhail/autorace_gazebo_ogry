@@ -7,15 +7,21 @@ from cv_bridge import CvBridge
 import ament_index_python
 
 from autorace_communication_gazebo_ogry.action import *
-import autorace_communication_gazebo_ogry.action
 
 import cv2
 import numpy as np
 import os
-import struct, pickle
 
 THRESHOLD = 10
 
+order = [
+    "intersection_sign",
+    "parking_sign",
+    "crossing_sign",
+    "tunnel_sign"
+]
+
+current = 0
 
 def open_image(sift, path):
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
@@ -75,7 +81,7 @@ class SignDetector(Node):
 
         self.signs = [
             ('intersection_sign' , open_image(self.sift, os.path.join(driver_path, "intersection.png")), MIN_MSE_DECISION),
-            ('construction_sign' , open_image(self.sift, os.path.join(driver_path, "construction.png")), 250000),
+            # ('construction_sign' , open_image(self.sift, os.path.join(driver_path, "construction.png")), 250000),
             ('parking_sign' , open_image(self.sift, os.path.join(driver_path, "parking.png")), MIN_MSE_DECISION),
             ('crossing_sign' , open_image(self.sift, os.path.join(driver_path, "crosswalk.png")), MIN_MSE_DECISION),
             ('tunnel_sign' , open_image(self.sift, os.path.join(driver_path, "tunnel.png")), MIN_MSE_DECISION),
@@ -87,6 +93,7 @@ class SignDetector(Node):
         self.robot_started = False
         self.action_processing = False
         self.counter = 0
+        self.current = 0
 
 
     
@@ -99,8 +106,8 @@ class SignDetector(Node):
                 if m.distance < 0.55*n.distance:
                     good_intersection.append(m)
             if len(good_intersection)>=thres:
-                return name
-        return None
+                return name, len(good_intersection)
+        return None, None
 
     def detect(self, msg):
         self.counter += 1
@@ -120,7 +127,7 @@ class SignDetector(Node):
 
         if self.action_processing:
             kp, des = self.sift.detectAndCompute(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), None)
-            name = self.getDetected(des, self.during_action, 10)
+            name, count = self.getDetected(des, self.during_action, 15)
             if name is None:
                 return
             msg = String()
@@ -129,14 +136,18 @@ class SignDetector(Node):
             elif name == "traffic_right":
                 msg.data = "right"
             self.turn_direction.publish(msg)
+            self.get_logger().info(f"{name} {count}")
             return
 
         
-        name = self.getDetected(des, self.signs)
+        name, count = self.getDetected(des, self.signs)
         
         
         if name in self.action_servers.keys():
-            self.get_logger().info(name)
+            if order[self.current] != name:
+                return
+            self.current += 1
+            self.get_logger().info(f"{name} {count}")
             (client, cls) = self.action_servers[name]
             client.wait_for_server()
             goal = cls

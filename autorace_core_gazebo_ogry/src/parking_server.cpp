@@ -29,8 +29,8 @@ enum class Direction {
   Right
 };
 
-float turn_pose[2] = {-0.6, 3.51};
-float stop_pose[2] = {-0.6, 2.41};
+float turn_pose[2] = {-0.6, 3.34};
+float stop_pose[2] = {-0.6, 2.8};
 
 namespace missions_action_cpp
 {

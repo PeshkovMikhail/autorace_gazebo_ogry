@@ -84,7 +84,7 @@ private:
   float current_pose[2] = {0, 0};
   float stop_pose[2] = {0.70f, 0.98f};
   float turn_pose[2] = {0.47f, 0.98f};
-  float finish_pose[2] = {-0.85, 0.85};
+  float finish_pose[2] = {-0.30, 0.90};
   float z_angle;
   bool await_turn_dir = false;
 
@@ -165,11 +165,11 @@ private:
     // driver_state_->publish(driver_state_msg);
 
     // Check if goal is done
-    while(calcMSE(current_pose, finish_pose) > 0.01) {
+    while(calcMSE(current_pose, finish_pose) > 0.015) {
       loop_rate.sleep();
       //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
     }
-
+    await_turn_dir = false;
     std_msgs::msg::Float32 prop;
     prop.data = 0.5;
     driver_line_prop_->publish(prop);

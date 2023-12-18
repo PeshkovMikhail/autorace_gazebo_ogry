@@ -282,14 +282,16 @@ public:
     vec<float> stupid_work()
     {
         vec<float> res;
+        if (walls_cnt >=2)
+            return res;
         if (lidar->ranges[0]<0.4)
             is_wall = true;   
         if (is_wall)
         {
             res.x = 0;
             res.y = 1;
-            res = res.rotate(((walls_cnt%2)*2-1)*70.0f/180*M_PI);
-            std::cout<<"SUKA TAM STENA POVORACHIVAY BLYAT'"<<res<<" "<<is_wall<<std::endl;
+            res = res.rotate((walls_cnt*2-1)*(70.0f+walls_cnt*10.0f)/180*M_PI);
+            // std::cout<<"SUKA TAM STENA POVORACHIVAY BLYAT'"<<res<<" "<<is_wall<<std::endl;
         }
         
         if (lidar->ranges[0]>0.6 && is_wall)
