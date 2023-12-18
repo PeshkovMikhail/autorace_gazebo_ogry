@@ -44,8 +44,8 @@ public:
 		show_pub = this->create_publisher<sensor_msgs::msg::Image>("/show_line", 10);
 		
 		driver_state_ = create_subscription<std_msgs::msg::Bool>("/driver_state", 10, std::bind(&MinimalPublisher::set_enabled, this, std::placeholders::_1));
-		last_task_ = create_subscription<std_msgs::msg::Bool>("/last_task", 10, std::bind(&MinimalPublisher::set_last_test, this, std::placeholders::_1));
 		change_cringe_task_ = create_subscription<std_msgs::msg::Float32>("/change_cringe", 10, std::bind(&MinimalPublisher::save_cringe, this, std::placeholders::_1));
+		task_select_ = create_subscription<std_msgs::msg::Float32>("/task_select", 10, std::bind(&MinimalPublisher::set_test, this, std::placeholders::_1));
 		
 	}
 
@@ -67,8 +67,7 @@ private:
 	
 	float k_dif=0.2;
 	float max_vel = 0.3;
-
-	bool last_test = false;
+	uint32_t task_number = 0;
 	bool enabled = false;
 	
 	void save_depth_data(const sensor_msgs::msg::Image& msg)
@@ -130,10 +129,20 @@ private:
 		iis.show = show;
 		
 		vec<float> vector;
-		if (!last_test)
+		switch (task_number)
+		{
+		case 0:
 			vector = iis.mrv();
-		else
+			break;
+		case 1:
+			vector = iis.egor_letov();
+			break;
+		case 2:
 			vector = iis.random_forest();
+			break;
+		default:
+			break;
+		}
 			
 		if (std::isnan(vector.x) || std::isnan(vector.y))
 		{
@@ -170,9 +179,8 @@ private:
 		enabled = msg.data;
 		RCLCPP_INFO(get_logger(), "driver state %d", enabled);
 	}
-	void set_last_test(const std_msgs::msg::Bool& msg) {
-		last_test = msg.data;
-		RCLCPP_INFO(get_logger(), "last_task");
+	void set_test(const std_msgs::msg::Float32& msg) {
+		task_number = (uint32_t)std::round(msg.data);
 	}
 	void set_max_vel(const std_msgs::msg::Float32& msg) {
 		max_vel = msg.data;
@@ -184,11 +192,11 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_subscription_;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pointCloud_subscription_;
 	rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr driver_state_;
-	rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr last_task_;
 	rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr show_pub;
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_subscription_;
 	rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr max_vel_sub_;
 	rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr change_cringe_task_;
+	rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr task_select_;
 };
 
 int main(int argc, char * argv[])

@@ -476,4 +476,25 @@ public:
 
     }
 
+    vec<float> egor_letov()
+    {
+        //Ubivat' ubivat' ubivat' ...
+
+        float max_lidar_angle = 30.0f/2/180*M_PI;
+        float max_distanse = 0.4;
+
+        auto smth = (int)(max_lidar_angle/lidar->angle_increment);
+
+        vec<float> res(0,1);
+        for (int i = 0;i<smth;i++)
+            if (lidar->ranges[i]/cos(lidar->angle_increment*i) < max_distanse)
+                res.y = 0;
+
+        for (int i = 0;i<smth;i++)
+            if (lidar->ranges[lidar->ranges.size()-i]/cos(lidar->angle_increment*i) < max_distanse)
+                res.y = 0;
+
+        return res;
+    }
+
 };
