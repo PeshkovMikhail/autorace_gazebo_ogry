@@ -89,7 +89,21 @@ private:
     void execute(const std::shared_ptr<GoalHandleCrosswalk> goal_handle)
     {
         rclcpp::Rate loop_rate(50);
+        geometry_msgs::msg::Twist twist;
+        std_msgs::msg::Bool driver_state;
         auto result = std::make_shared<Crosswalk::Result>();
+
+
+        float angle = 30.0f/180*M_PI;
+
+        int count = angle*lidar.angle_increment;
+        int size = (6.28f)*lidar.angle_increment;
+        for(int i = 0; i < count/2; i++)
+        {
+            if(!std::isinf(lidar.ranges[i])){
+                break;
+            }
+        }
         if (rclcpp::ok()) {
             // result->finished = true;
             goal_handle->succeed(result);

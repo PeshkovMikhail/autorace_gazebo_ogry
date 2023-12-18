@@ -45,6 +45,7 @@ public:
 		
 		driver_state_ = create_subscription<std_msgs::msg::Bool>("/driver_state", 10, std::bind(&MinimalPublisher::set_enabled, this, std::placeholders::_1));
 		last_task_ = create_subscription<std_msgs::msg::Bool>("/last_task", 10, std::bind(&MinimalPublisher::set_last_test, this, std::placeholders::_1));
+		change_cringe_task_ = create_subscription<std_msgs::msg::Float32>("/change_cringe", 10, std::bind(&MinimalPublisher::save_cringe, this, std::placeholders::_1));
 		
 	}
 
@@ -79,6 +80,11 @@ private:
 	void save_lidar_data(const sensor_msgs::msg::LaserScan& msg)
 	{
 		lidar = msg;
+	}
+	void save_cringe(const std_msgs::msg::Float32 &msg)
+	{
+		RCLCPP_INFO(this->get_logger(),"DA POHUY\n");
+		iis.cringe = msg.data;
 	}
 	
 	void odom_save(const nav_msgs::msg::Odometry &msg) {
@@ -162,6 +168,7 @@ private:
 
 	void set_enabled(const std_msgs::msg::Bool& msg) {
 		enabled = msg.data;
+		RCLCPP_INFO(get_logger(), "driver state %d", enabled);
 	}
 	void set_last_test(const std_msgs::msg::Bool& msg) {
 		last_test = msg.data;
@@ -181,6 +188,7 @@ private:
 	rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr show_pub;
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_subscription_;
 	rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr max_vel_sub_;
+	rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr change_cringe_task_;
 };
 
 int main(int argc, char * argv[])

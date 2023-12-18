@@ -29,8 +29,8 @@ enum class Direction {
   Right
 };
 
-float turn_pose[2] = {-0.27, 3.51};
-float stop_pose[2] = {-0.32, 2.41};
+float turn_pose[2] = {-0.6, 3.51};
+float stop_pose[2] = {-0.6, 2.41};
 
 namespace missions_action_cpp
 {
@@ -118,7 +118,7 @@ private:
     
     RCLCPP_INFO(get_logger(), "PARKING TASK STARTED");
 
-    while(calcMSE(current_pose, turn_pose) > 0.001) {
+    while(calcMSE(current_pose, turn_pose) > 0.01) {
       loop_rate.sleep();
     }
     driver_state.data = false;

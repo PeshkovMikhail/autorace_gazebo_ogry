@@ -75,12 +75,14 @@ class IIS
 	int walls_cnt=1;
     bool is_wall = false;
 	float k_dif=0.1;
+    
 public: 
     sensor_msgs::msg::LaserScan* lidar;
 	float* depth = nullptr;
 	point3* cloud = nullptr;
     vec<float> pos;
     float angle;
+    float cringe = 0.5;
     float needed_angle=NAN;
     cv::Mat image;
     cv::Mat mask;
@@ -273,7 +275,7 @@ public:
         l.x--;
         r.x++;
 
-        auto smdf = road_coords_2_img((float_img_translate(l)+float_img_translate(r))/2);
+        auto smdf = road_coords_2_img((float_img_translate(l)*cringe+float_img_translate(r)*(1-cringe)));
         return vec<float>(smdf.x,0);
     }
     
@@ -391,7 +393,7 @@ public:
             // std::cout<<iter<<std::endl;
             // std::cout<<"REAL "<<left<<" "<<right<<std::endl;
             
-            auto p_new = road_coords_2_img((left+right)/2);
+            auto p_new = road_coords_2_img((left*cringe+right*(1-cringe)));
             auto n_w = vec<float>(p_new - now_point);
             if (std::isnan(n_w.x) || std::isnan(n_w.y) || n_w.len()==0)
                 return vec<float>(NAN,NAN);

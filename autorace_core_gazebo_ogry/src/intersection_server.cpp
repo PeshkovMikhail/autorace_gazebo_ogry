@@ -8,6 +8,7 @@
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "rclcpp_components/register_node_macro.hpp"
 #include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -59,6 +60,7 @@ public:
 
     vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
     driver_state_ = create_publisher<std_msgs::msg::Bool>("/driver_state", 10);
+    driver_line_prop_ = create_publisher<std_msgs::msg::Float32>("/change_cringe", 10);
     
     this->action_server_ = rclcpp_action::create_server<Intersection>(
       this,
@@ -77,11 +79,12 @@ private:
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr vel_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr driver_state_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr driver_line_prop_;
 
   float current_pose[2] = {0, 0};
   float stop_pose[2] = {0.70f, 0.98f};
   float turn_pose[2] = {0.47f, 0.98f};
-  float finish_pose[2] = {-0.10, 0.98};
+  float finish_pose[2] = {-0.85, 0.85};
   float z_angle;
   bool await_turn_dir = false;
 
@@ -117,63 +120,67 @@ private:
     await_turn_dir = true;
     RCLCPP_INFO(get_logger(), "INTERSECTION TASK STARTED");
     
-    while(calcMSE(current_pose, stop_pose) > 0.001) {
-      loop_rate.sleep();
-      //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
-    }
-    auto driver_state_msg = std_msgs::msg::Bool();
-    auto twist = geometry_msgs::msg::Twist();
+    // while(calcMSE(current_pose, stop_pose) > 0.001) {
+    //   loop_rate.sleep();
+    //   //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
+    // }
+    // auto driver_state_msg = std_msgs::msg::Bool();
+    // auto twist = geometry_msgs::msg::Twist();
    
     
-    driver_state_msg.data = false;
-    driver_state_->publish(driver_state_msg);
-    twist.linear.x = 0;
-    vel_publisher_->publish(twist);
+    // driver_state_msg.data = false;
+    // driver_state_->publish(driver_state_msg);
+    // twist.linear.x = 0;
+    // vel_publisher_->publish(twist);
 
-    if(dir == Direction::None){
-      dir = Direction::Left;
-    }
-    await_turn_dir = false;
-    twist.linear.x = 0.1;
-    vel_publisher_->publish(twist);
+    // if(dir == Direction::None){
+    //   dir = Direction::Left;
+    // }
+    // await_turn_dir = false;
+    // twist.linear.x = 0.1;
+    // vel_publisher_->publish(twist);
 
-    while(calcMSE(current_pose, turn_pose) > 0.01) {
-      loop_rate.sleep();
-      //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
-    }
+    // while(calcMSE(current_pose, turn_pose) > 0.01) {
+    //   loop_rate.sleep();
+    //   //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
+    // }
 
-    switch (dir)
-    {
-    case Direction::Right:
-      turn_to_angle(3*3.14/4, loop_rate, -1);
-      break;
-    case Direction::Left:
-      turn_to_angle(-3*3.14/4, loop_rate, 1);
-      break;
-    case Direction::None:
-      RCLCPP_ERROR(get_logger(), "failed to detect turn direction");
-      break;
-    default:
-      break;
-    }
-    twist.linear.x = 0.05;
-    vel_publisher_->publish(twist);
-    driver_state_msg.data = true;
-    driver_state_->publish(driver_state_msg);
+    // switch (dir)
+    // {
+    // case Direction::Right:
+    //   turn_to_angle(3*3.14/4, loop_rate, -1);
+    //   break;
+    // case Direction::Left:
+    //   turn_to_angle(-3*3.14/4, loop_rate, 1);
+    //   break;
+    // case Direction::None:
+    //   RCLCPP_ERROR(get_logger(), "failed to detect turn direction");
+    //   break;
+    // default:
+    //   break;
+    // }
+    // twist.linear.x = 0.05;
+    // vel_publisher_->publish(twist);
+    // driver_state_msg.data = true;
+    // driver_state_->publish(driver_state_msg);
 
     // Check if goal is done
-    while(calcMSE(current_pose, finish_pose) > 0.005) {
+    while(calcMSE(current_pose, finish_pose) > 0.01) {
       loop_rate.sleep();
       //RCLCPP_INFO(get_logger(), "%f", calcMSE(current_pose, goal_pose));
     }
-    driver_state_msg.data = false;
-    driver_state_->publish(driver_state_msg);
 
-    int sign = dir == Direction::Right ? -1 : 1;
-    turn_to_angle(sign*5*3.14/6, loop_rate, sign);
+    std_msgs::msg::Float32 prop;
+    prop.data = 0.5;
+    driver_line_prop_->publish(prop);
+    // driver_state_msg.data = false;
+    // driver_state_->publish(driver_state_msg);
 
-    driver_state_msg.data = true;
-    driver_state_->publish(driver_state_msg);
+    // int sign = dir == Direction::Right ? -1 : 1;
+    // turn_to_angle(sign*5*3.14/6, loop_rate, sign);
+
+    // driver_state_msg.data = true;
+    // driver_state_->publish(driver_state_msg);
     
     auto result = std::make_shared<Intersection::Result>();
     if (rclcpp::ok()) {
@@ -211,18 +218,26 @@ private:
   }
 
   void set_turn_dir(const std_msgs::msg::String &msg) {
+    if(dir != Direction::None) {
+      return;
+    }
+    std_msgs::msg::Float32 prop;
+    prop.data = 0.5;
     if(!await_turn_dir) {
       return;
     }
     if(msg.data == "left") {
       dir = Direction::Left;
+      prop.data = 0.2;
     }
     else if(msg.data == "right") {
       dir = Direction::Right;
+      prop.data  = 0.8;
     }
     else{
       RCLCPP_ERROR(get_logger(), "unexpected direction");
     }
+    driver_line_prop_->publish(prop);
     RCLCPP_INFO(get_logger(), "turn %s", msg.data.c_str());
   }
 };  // class IntersectionActionServer
