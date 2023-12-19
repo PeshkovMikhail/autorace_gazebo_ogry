@@ -104,25 +104,27 @@ private:
 
 
         float max_lidar_angle = 30.0f/2/180*M_PI;
-        float max_distanse = 0.4;
+        float max_distanse = 0.1;
 
         auto smth = (int)(max_lidar_angle/lidar.angle_increment);
 
-        driver_state.data = false;
-        driver_state_pub_->publish(driver_state);
         
-        while(true) {
-            bool found = false;
-            for (int i = 0;i<smth;i++)
-                if (lidar.ranges[i]/cos(lidar.angle_increment*i) < max_distanse || lidar.ranges[lidar.ranges.size()-i]/cos(lidar.angle_increment*i) < max_distanse)
-                    found = true;
-            if(!found){
-                break;
-            }
-        }
+        
+        // while(true) {
+        //     bool found = false;
+        //     for (int i = 0;i<smth;i++)
+        //         if (lidar.ranges[i]/cos(lidar.angle_increment*i) < max_distanse || lidar.ranges[lidar.ranges.size()-i]/cos(lidar.angle_increment*i) < max_distanse) {
+        //             driver_state.data = false;
+        //             driver_state_pub_->publish(driver_state);
+        //             found = true;
+        //         }
+        //     if(!found){
+        //         break;
+        //     }
+        // }
 
-        driver_state.data = true;
-        driver_state_pub_->publish(driver_state);
+        // driver_state.data = true;
+        // driver_state_pub_->publish(driver_state);
         
 
         // float angle = 30.0f/180*M_PI;

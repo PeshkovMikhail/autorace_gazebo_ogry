@@ -149,4 +149,16 @@ install(
   DESTINATION share/${PROJECT_NAME}/launch
 )
 
+install(
+  DIRECTORY
+    config/
+  DESTINATION share/${PROJECT_NAME}/config
+)
+
+install(
+  DIRECTORY
+    map/
+  DESTINATION share/${PROJECT_NAME}/config
+)
+
 ament_package()

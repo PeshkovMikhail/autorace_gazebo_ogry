@@ -9,6 +9,7 @@
 #include "sensor_msgs/point_cloud2_iterator.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32.hpp"
+#include "autorace_communication_gazebo_ogry/msg/mask.hpp"
 
 #include "road.hpp"
 
@@ -46,7 +47,7 @@ public:
 		driver_state_ = create_subscription<std_msgs::msg::Bool>("/driver_state", 10, std::bind(&MinimalPublisher::set_enabled, this, std::placeholders::_1));
 		change_cringe_task_ = create_subscription<std_msgs::msg::Float32>("/change_cringe", 10, std::bind(&MinimalPublisher::save_cringe, this, std::placeholders::_1));
 		task_select_ = create_subscription<std_msgs::msg::Float32>("/task_select", 10, std::bind(&MinimalPublisher::set_test, this, std::placeholders::_1));
-		
+		mask_pub_ = create_publisher<autorace_communication_gazebo_ogry::msg::Mask>("/mask", 1);
 	}
 
 private:
@@ -107,19 +108,36 @@ private:
 		//------\  ^   |
 		//      |  |   |
 		////////////////
-		if (!depth || !enabled)
-			return;
 
 		auto img_orig = cv_bridge::toCvCopy(msg, "bgr8")->image;
 		cv_bridge::CvImagePtr show= cv_bridge::toCvCopy(msg, "rgb8");
 		cv::Mat img;
 		cv::cvtColor(img_orig, img, cv::COLOR_BGR2HSV);
+
+		cv::Mat mat(480, 848, CV_8UC1, cv::Scalar(0));
+        cv::Mat wmask, ymask;
+        cv::inRange(img, cv::Scalar(0, 0, 230), cv::Scalar(179, 70, 255), wmask);
+        cv::inRange(img, cv::Scalar(10, 100, 180), cv::Scalar(40, 255, 255), ymask);
+        cv::Mat mask = (wmask | ymask);
+
+		autorace_communication_gazebo_ogry::msg::Mask mask_msg;
+		mask_msg.height = 480;
+		mask_msg.width = 848;
+		mask_msg.mask = std::vector<uint8_t>((uint8_t*)mask.data, mask.data + 480*848);
+
+		mask_pub_->publish(mask_msg);
+		
+		if (!depth || !enabled)
+			return;
+
+		
 		// cv::cvtColor(cv_bridge::toCvCopy(msg, "bgr8")->image);
 		// show->image.at<RGB8>(479 - i, (int)pt) = {255, 0, 255};
 
 		// auto rimage = (RGB8*)msg.data.data();
 		iis.depth = depth;
 		iis.image = img;
+		iis.mask = mask;
 		iis.lidar = &lidar;
 		iis.angle = z_angle;
 		iis.pos = position;
@@ -197,6 +215,7 @@ private:
 	rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr max_vel_sub_;
 	rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr change_cringe_task_;
 	rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr task_select_;
+	rclcpp::Publisher<autorace_communication_gazebo_ogry::msg::Mask>::SharedPtr mask_pub_;
 };
 
 int main(int argc, char * argv[])

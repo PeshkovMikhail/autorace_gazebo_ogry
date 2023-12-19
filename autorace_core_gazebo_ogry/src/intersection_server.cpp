@@ -84,7 +84,7 @@ private:
   float current_pose[2] = {0, 0};
   float stop_pose[2] = {0.70f, 0.98f};
   float turn_pose[2] = {0.47f, 0.98f};
-  float finish_pose[2] = {-0.30, 0.90};
+  float finish_pose[2] = {-0.35, 0.90};
   float z_angle;
   bool await_turn_dir = false;
 

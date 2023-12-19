@@ -7,8 +7,8 @@ const uint32_t ITER_COUNT = 10;
 const float VEC_SIZE = 5;
 const float VEC_FADING = 0.6;
 const float MAX_ANGLE = 20*M_PI/180;
-const float ROAD_HEIGHT = 0.10f;
-const float ROAD_ERR = 0.025f;
+const float ROAD_HEIGHT = 0.105f;
+const float ROAD_ERR = 0.02f;
 //
 
 
@@ -89,7 +89,16 @@ public:
     
     cv_bridge::CvImagePtr show;
 
-    
+    inline float float_lidar(float angles)
+    {
+        auto float_ind = angles/lidar->angle_increment;
+        if (float_ind<0)
+            float_ind += lidar->ranges.size();
+
+        int ind = std::floor(float_ind);
+        return lidar->ranges[ind]*(float_ind-ind) + (ind+1-float_ind)*lidar->ranges[ind+1];
+    }
+
     inline bool isroad(vec<int> coords)
     {
         
@@ -97,8 +106,16 @@ public:
         if (0<=coords.x && coords.x<CAM_W && 0<=coords.y && coords.y<CAM_H)
         {
             auto angles = to_real_angles(coords);
+            
             float cds = image_remap(depth,coords);
-            float z = cos(angles.x)*sin(angles.y)*cds;
+
+            auto tan_b = tan(angles.y);
+            auto tan_a = tan(angles.x);
+            
+            float y = cds/sqrt(1+tan_b*tan_b + tan_a*tan_a);
+            float z = y*tan_b;
+
+            
             return abs(z-ROAD_HEIGHT)<ROAD_ERR && !mask.at<uchar>(479-coords.y, coords.x);
         }
             
@@ -128,9 +145,13 @@ public:
         vec<float> res;
         float cds = image_remap(depth,coords);
 
-        res.x = cos(angles.y)*sin(angles.x)*cds;
-        res.y = cos(angles.x)*cos(angles.y)*cds;
-        float z = cos(angles.x)*sin(angles.y)*cds;
+
+        auto tan_b = tan(angles.y);
+        auto tan_a = tan(angles.x);
+        
+        res.y = cds/sqrt(1+tan_b*tan_b + tan_a*tan_a);
+        res.x = res.y*tan_a;
+        float z = res.y*tan_b;
 
         // auto pt = image_remap(cloud,coords);
         // RCLCPP_INFO(this->get_logger(),"%f\n",z);
@@ -284,13 +305,13 @@ public:
         vec<float> res;
         if (walls_cnt >=2)
             return res;
-        if (lidar->ranges[0]<0.4)
+        if (lidar->ranges[0]<0.5)
             is_wall = true;   
         if (is_wall)
         {
             res.x = 0;
             res.y = 1;
-            res = res.rotate((walls_cnt*2-1)*(70.0f+walls_cnt*10.0f)/180*M_PI);
+            res = res.rotate((walls_cnt*2-1)*(70.0f+walls_cnt*60.0f)/180*M_PI);
             // std::cout<<"SUKA TAM STENA POVORACHIVAY BLYAT'"<<res<<" "<<is_wall<<std::endl;
         }
         
@@ -466,15 +487,19 @@ public:
     {
         if (std::isnan(needed_angle))
         {
-            needed_angle = angle-45.0f/180*M_PI;
-            if (needed_angle<-M_PI)
-                needed_angle+=M_PI;
+            needed_angle = angle+45.0f/180*M_PI;
+            if (needed_angle>M_PI)
+                needed_angle-=M_PI;
         }
+        
             
+        
         vec<float> shwed(1,0);
         shwed = shwed.rotate(needed_angle-angle);
 
-        return shwed*0.2+mrv()*0.8;
+        if (abs(needed_angle-angle)<0.1)
+            return shwed;
+        return mrv();
 
     }
 
