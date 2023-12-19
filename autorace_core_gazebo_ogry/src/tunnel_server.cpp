@@ -140,7 +140,7 @@ private:
         std_msgs::msg::String msg;
         msg.data = "gazebo_ogry";
         finished_->publish(msg);
-
+        return;
         lddf.data = 0.65;
         driver_line_prop_->publish(lddf);
 
