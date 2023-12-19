@@ -125,40 +125,98 @@ private:
     {
         rclcpp::Rate loop_rate(50);
         std_msgs::msg::Float32 lddf;
-        lddf.data = 0.6;
-        driver_line_prop_->publish(lddf);
-
-        geometry_msgs::msg::Twist twist;
-    
-
-        while(lidar.ranges[0]>0.3)
-        {
-            loop_rate.sleep();
-        }
-        twist.linear.x = 0;
-        twist.angular.z = M_PI/2;
-
-        twist.linear.x = 0.1;
-        twist.angular.z = M_PI/2;
-
-        vel_publisher_->publish(twist);
-        auto angle = z_angle + M_PI/2;
-        while(abs(z_angle-angle)>0.01)
-        {
-            vel_publisher_->publish(twist);
-            loop_rate.sleep();
-        }
-        vel_publisher_->publish(twist);
-        return;
         std_msgs::msg::Bool enabled;
         enabled.data = false;
 
         
 
-        twist.linear.x = 0.2;
-        vel_publisher_->publish(twist);
+
 
         driver_state_pub_->publish(enabled);
+        geometry_msgs::msg::Twist twist;
+        twist.linear.x = 0.0;
+        vel_publisher_->publish(twist);
+
+        std_msgs::msg::String msg;
+        msg.data = "gazebo_ogry";
+        finished_->publish(msg);
+
+        lddf.data = 0.65;
+        driver_line_prop_->publish(lddf);
+
+        
+        sleep(2);
+        enabled.data = true;
+        driver_state_pub_->publish(enabled);
+
+        while(lidar.ranges[0]>0.4)
+        {
+            loop_rate.sleep();
+        }
+  
+        enabled.data = false;
+        driver_state_pub_->publish(enabled);
+        twist.linear.x = 0.1;
+        twist.angular.z = M_PI/2;
+
+        vel_publisher_->publish(twist);
+        auto angle = z_angle + M_PI/2.2;
+        while(abs(z_angle-angle)>0.01)
+        {
+            vel_publisher_->publish(twist);
+            loop_rate.sleep();
+        }
+        enabled.data = true;
+        driver_state_pub_->publish(enabled);
+        
+
+
+        // std_msgs::msg::Bool enabled;
+        // enabled.data = false;
+
+        
+
+        // twist.linear.x = 0.2;
+        // vel_publisher_->publish(twist);
+
+        // driver_state_pub_->publish(enabled);
+
+        // // float start = get_clock()->now().seconds();
+
+        // // while (get_clock()->now().seconds() - start < 3)
+        // // {
+        // //     loop_rate.sleep();
+        // // }
+
+
+        
+
+        // twist.linear.x = 0.4;
+        // vel_publisher_->publish(twist);
+
+        // while(lidar.ranges[0]>0.5)
+        // {
+        //     loop_rate.sleep();
+        // }
+        // twist.linear.x = 0.1;
+        // vel_publisher_->publish(twist);
+        // while(lidar.ranges[0]>0.2)
+        // {
+        //     loop_rate.sleep();
+        // }
+        // twist.linear.x = 0.1;
+        // twist.angular.z = M_PI/2;
+
+        // vel_publisher_->publish(twist);
+        // angle = z_angle + M_PI/2;
+        // while(abs(z_angle-angle)>0.01)
+        // {
+        //     loop_rate.sleep();
+        // }
+        // twist.linear.x = 1;
+        // vel_publisher_->publish(twist);
+
+        // driver_state_pub_->publish(enabled);
 
         // float start = get_clock()->now().seconds();
 
@@ -166,62 +224,24 @@ private:
         // {
         //     loop_rate.sleep();
         // }
-
-
         
 
-        twist.linear.x = 0.4;
-        vel_publisher_->publish(twist);
-        while(lidar.ranges[0]>0.5)
-        {
-            loop_rate.sleep();
-        }
-        twist.linear.x = 0.1;
-        vel_publisher_->publish(twist);
-        while(lidar.ranges[0]>0.2)
-        {
-            loop_rate.sleep();
-        }
-        twist.linear.x = 0.1;
-        twist.angular.z = M_PI/2;
-
-        vel_publisher_->publish(twist);
-        angle = z_angle + M_PI/2;
-        while(abs(z_angle-angle)>0.01)
-        {
-            loop_rate.sleep();
-        }
-        twist.linear.x = 1;
-        vel_publisher_->publish(twist);
-
-        driver_state_pub_->publish(enabled);
-
-        float start = get_clock()->now().seconds();
-
-        while (get_clock()->now().seconds() - start < 3)
-        {
-            loop_rate.sleep();
-        }
-        
-
-        // geometry_msgs::msg::PoseStamped pose;
-        // pose.header.frame_id = "robot/map";
-        // pose.header.stamp = get_clock()->now();
+        // // geometry_msgs::msg::PoseStamped pose;
+        // // pose.header.frame_id = "robot/map";
+        // // pose.header.stamp = get_clock()->now();
 
         
         
-        // goal_pose_->publish(pose);
+        // // goal_pose_->publish(pose);
 
-        // get_clock()->now();
+        // // get_clock()->now();
 
 
         while(calcMSE(current_pose, finish_pose) > 0.05) {
             loop_rate.sleep();
         }
 
-        std_msgs::msg::String msg;
-        msg.data = "gazebo_ogry";
-        finished_->publish(msg);
+        
 
         auto result = std::make_shared<Tunnel::Result>();
         if (rclcpp::ok()) {

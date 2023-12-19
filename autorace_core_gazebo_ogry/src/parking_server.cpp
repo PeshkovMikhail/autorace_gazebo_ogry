@@ -145,9 +145,11 @@ private:
     prop.data = 0.4;
     driver_line_prop_->publish(prop);
 
-    while(std::fabs(normalizeAngleToMinusPiToPi(initial_angle + M_PI/2) - z_angle) > 0.01) {
+    while(std::fabs(normalizeAngleToMinusPiToPi(initial_angle + M_PI/2) - z_angle) > 0.05) {
       loop_rate.sleep();
     }
+    drive_vel.data = 0.15;
+    driver_vel_->publish(drive_vel);
     
     
     auto start = get_clock()->now().seconds();
@@ -175,30 +177,38 @@ private:
     int lidar_size = lidar.ranges.size();
     int last_i;
     bool found_car = false;
-    for(int i = 0; i < lidar_size; i++) {
+    int left = 0, right = 0;
+    for(int i = 0; i < lidar_size/2; i++) {
       if(lidar.ranges[i] > lidar.range_min && lidar.ranges[i] < 0.3) {
+        left+=1;
         found_car = true;
-        last_i = i;
       }
     }
 
-    float angle = lidar.angle_min + lidar.angle_increment*last_i;
+    for(int i = lidar_size/2; i < lidar_size; i++) {
+      if(lidar.ranges[i] > lidar.range_min && lidar.ranges[i] < 0.3) {
+        right+=1;
+        found_car = true;
+      }
+    }
 
+    float turn_coef = 1;
     auto dir = Direction::None;
     if(found_car) {
-      if(angle > 0) {
+      if(left < right) {
         dir = Direction::Left;
+        RCLCPP_INFO(get_logger(), "left");
       }
       else {
         dir = Direction::Right;
+        RCLCPP_INFO(get_logger(), "right");
+        turn_coef = -1;
       }
     }
     else {
       RCLCPP_INFO(get_logger(), "No parked car found. Using left place");
       dir = Direction::Left;
     }
-
-    float turn_coef = Direction::Right == dir ? -1 : 1;
 
 
     
@@ -226,7 +236,7 @@ private:
       loop_rate.sleep();
     }
 
-    turn_to_angle(normalizeAngleToMinusPiToPi(z_angle + turn_coef*M_PI/2), loop_rate, turn_coef);
+    turn_to_angle(normalizeAngleToMinusPiToPi(z_angle + turn_coef*M_PI/1.9), loop_rate, turn_coef);
 
      twist.linear.x = 0.2;
     vel_publisher_->publish(twist);
@@ -236,18 +246,20 @@ private:
       loop_rate.sleep();
     }
 
-    turn_to_angle(normalizeAngleToMinusPiToPi(z_angle + turn_coef*M_PI/2), loop_rate, turn_coef);
+    // turn_to_angle(normalizeAngleToMinusPiToPi(z_angle + turn_coef*M_PI/2), loop_rate, turn_coef);
 
-    turn_to_angle(normalizeAngleToMinusPiToPi(z_angle + turn_coef*M_PI/2), loop_rate, turn_coef);
-    twist.linear.x = 0.1;
+    // turn_to_angle(normalizeAngleToMinusPiToPi(z_angle + turn_coef*M_PI/2), loop_rate, turn_coef);
+    // twist.linear.x = 0.1;
+    // vel_publisher_->publish(twist);
+
+    // while(lidar.ranges[0] > 0.25) {
+    //   loop_rate.sleep();
+    // }
+
+    // turn_to_angle(normalizeAngleToMinusPiToPi(z_angle - turn_coef*M_PI/2), loop_rate, -turn_coef);
+
+    twist.linear.x = 0.2;
     vel_publisher_->publish(twist);
-
-    while(lidar.ranges[0] > 0.25) {
-      loop_rate.sleep();
-    }
-
-    turn_to_angle(normalizeAngleToMinusPiToPi(z_angle - turn_coef*M_PI/2), loop_rate, -turn_coef);
-
 
     RCLCPP_INFO(get_logger(), "Done");
 
@@ -258,14 +270,6 @@ private:
     driver_state.data = true;
     driver_state_->publish(driver_state);
 
-    twist.linear.x = 0.2;
-    vel_publisher_->publish(twist);
-
-    while(get_clock()->now().seconds() - start < 3.0) {
-      loop_rate.sleep();
-    }
-    prop.data = 0.4;
-    driver_line_prop_->publish(prop);
     auto result = std::make_shared<Parking::Result>();
     if (rclcpp::ok()) {
       goal_handle->succeed(result);
@@ -284,7 +288,7 @@ private:
         twist.angular.z = sign*0.5;
 
         vel_publisher_->publish(twist);
-        while(std::fabs(z_angle - angle) > 0.01) {
+        while(std::fabs(z_angle - angle) > 0.005) {
         loop_rate.sleep();
         }
         twist.angular.z=0;
@@ -327,7 +331,7 @@ private:
       }
       
       if(status == Status::Stop) {
-        for(int y = msg.height - 150; y < msg.height - 1; y++) {
+        for(int y = msg.height - 180; y < msg.height - 1; y++) {
           if(msg.mask.at(msg.width*y + msg.width/2) != 0) {
             status = Status::MovingToParkingPlace;
             break;
