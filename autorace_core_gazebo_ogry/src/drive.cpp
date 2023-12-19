@@ -121,7 +121,7 @@ private:
 		cv::Mat mat(480, 848, CV_8UC1, cv::Scalar(0));
         cv::Mat wmask, ymask;
         cv::inRange(img, cv::Scalar(0, 0, 230), cv::Scalar(179, 70, 255), wmask);
-        cv::inRange(img, cv::Scalar(10, 180, 180), cv::Scalar(40, 255, 255), ymask);
+        cv::inRange(img, cv::Scalar(10, 100, 180), cv::Scalar(40, 255, 255), ymask);
         cv::Mat mask = (wmask | ymask);
 
 		autorace_communication_gazebo_ogry::msg::Mask mask_msg;
