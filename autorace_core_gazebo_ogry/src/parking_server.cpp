@@ -142,7 +142,7 @@ private:
     RCLCPP_INFO(get_logger(), "DETECTED TURN");
     initial_angle = z_angle;
 
-    prop.data = 0.35;
+    prop.data = 0.4;
     driver_line_prop_->publish(prop);
 
     while(std::fabs(normalizeAngleToMinusPiToPi(initial_angle + M_PI/2) - z_angle) > 0.01) {
@@ -151,7 +151,7 @@ private:
     
     
     auto start = get_clock()->now().seconds();
-    while(get_clock()->now().seconds() - start < 1.5) {
+    while(get_clock()->now().seconds() - start < 0.5) {
       loop_rate.sleep();
     }
 
@@ -236,17 +236,17 @@ private:
       loop_rate.sleep();
     }
 
-    // turn_to_angle(normalizeAngleToMinusPiToPi(z_angle + turn_coef*M_PI/2), loop_rate, turn_coef);
+    turn_to_angle(normalizeAngleToMinusPiToPi(z_angle + turn_coef*M_PI/2), loop_rate, turn_coef);
 
-    // turn_to_angle(normalizeAngleToMinusPiToPi(z_angle + turn_coef*M_PI/2), loop_rate, turn_coef);
-    // twist.linear.x = 0.1;
-    // vel_publisher_->publish(twist);
+    turn_to_angle(normalizeAngleToMinusPiToPi(z_angle + turn_coef*M_PI/2), loop_rate, turn_coef);
+    twist.linear.x = 0.1;
+    vel_publisher_->publish(twist);
 
-    // while(lidar.ranges[0] > 0.25) {
-    //   loop_rate.sleep();
-    // }
+    while(lidar.ranges[0] > 0.25) {
+      loop_rate.sleep();
+    }
 
-    // turn_to_angle(normalizeAngleToMinusPiToPi(z_angle - turn_coef*M_PI/2), loop_rate, -turn_coef);
+    turn_to_angle(normalizeAngleToMinusPiToPi(z_angle - turn_coef*M_PI/2), loop_rate, -turn_coef);
 
 
     RCLCPP_INFO(get_logger(), "Done");

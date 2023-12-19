@@ -131,12 +131,23 @@ private:
         geometry_msgs::msg::Twist twist;
     
 
-        while(lidar.ranges[0]>0.2)
+        while(lidar.ranges[0]>0.3)
         {
             loop_rate.sleep();
         }
         twist.linear.x = 0;
         twist.angular.z = M_PI/2;
+
+        twist.linear.x = 0.1;
+        twist.angular.z = M_PI/2;
+
+        vel_publisher_->publish(twist);
+        auto angle = z_angle + M_PI/2;
+        while(abs(z_angle-angle)>0.01)
+        {
+            vel_publisher_->publish(twist);
+            loop_rate.sleep();
+        }
         vel_publisher_->publish(twist);
         return;
         std_msgs::msg::Bool enabled;
@@ -175,7 +186,7 @@ private:
         twist.angular.z = M_PI/2;
 
         vel_publisher_->publish(twist);
-        auto angle = z_angle + M_PI/2;
+        angle = z_angle + M_PI/2;
         while(abs(z_angle-angle)>0.01)
         {
             loop_rate.sleep();
