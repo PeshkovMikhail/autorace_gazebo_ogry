@@ -173,16 +173,16 @@ private:
    
 
     int lidar_size = lidar.ranges.size();
-    int i;
+    int last_i;
     bool found_car = false;
-    for(i = 0; i < lidar_size; i++) {
+    for(int i = 0; i < lidar_size; i++) {
       if(lidar.ranges[i] > lidar.range_min && lidar.ranges[i] < 0.3) {
         found_car = true;
-        break;
+        last_i = i;
       }
     }
 
-    float angle = lidar.angle_min + lidar.angle_increment*i;
+    float angle = lidar.angle_min + lidar.angle_increment*last_i;
 
     auto dir = Direction::None;
     if(found_car) {
@@ -280,6 +280,7 @@ private:
 
   void turn_to_angle(float angle, rclcpp::Rate &loop_rate, int sign) {
         auto twist = geometry_msgs::msg::Twist();
+        twist.linear.x = 0.03;
         twist.angular.z = sign*0.5;
 
         vel_publisher_->publish(twist);

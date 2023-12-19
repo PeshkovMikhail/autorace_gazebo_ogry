@@ -155,7 +155,7 @@ private:
         {
             loop_rate.sleep();
         }
-        twist.linear.x = 0;
+        twist.linear.x = 0.1;
         twist.angular.z = M_PI/2;
 
         vel_publisher_->publish(twist);
@@ -177,13 +177,13 @@ private:
         }
         
 
-        geometry_msgs::msg::PoseStamped pose;
-        pose.header.frame_id = "robot/map";
-        pose.header.stamp = get_clock()->now();
+        // geometry_msgs::msg::PoseStamped pose;
+        // pose.header.frame_id = "robot/map";
+        // pose.header.stamp = get_clock()->now();
 
         
         
-        goal_pose_->publish(pose);
+        // goal_pose_->publish(pose);
 
         // get_clock()->now();
 
