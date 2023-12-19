@@ -61,6 +61,7 @@ public:
     vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
     driver_state_ = create_publisher<std_msgs::msg::Bool>("/driver_state", 10);
     driver_line_prop_ = create_publisher<std_msgs::msg::Float32>("/change_cringe", 10);
+    is_consturct = create_publisher<std_msgs::msg::Bool>("/is_construct", 10);
     
     this->action_server_ = rclcpp_action::create_server<Intersection>(
       this,
@@ -80,6 +81,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr vel_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr driver_state_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr driver_line_prop_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_consturct;
 
   float current_pose[2] = {0, 0};
   float stop_pose[2] = {0.70f, 0.98f};
@@ -173,6 +175,11 @@ private:
     std_msgs::msg::Float32 prop;
     prop.data = 0.5;
     driver_line_prop_->publish(prop);
+
+    sleep(10);
+    std_msgs::msg::Bool aezakmi;
+    aezakmi.data = true;
+    is_consturct->publish(aezakmi);
     // driver_state_msg.data = false;
     // driver_state_->publish(driver_state_msg);
 

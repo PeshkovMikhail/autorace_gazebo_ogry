@@ -45,6 +45,7 @@ public:
 		show_pub = this->create_publisher<sensor_msgs::msg::Image>("/show_line", 10);
 		
 		driver_state_ = create_subscription<std_msgs::msg::Bool>("/driver_state", 10, std::bind(&MinimalPublisher::set_enabled, this, std::placeholders::_1));
+		is_construct_ = create_subscription<std_msgs::msg::Bool>("/is_construct", 10, std::bind(&MinimalPublisher::save_construct, this, std::placeholders::_1));
 		change_cringe_task_ = create_subscription<std_msgs::msg::Float32>("/change_cringe", 10, std::bind(&MinimalPublisher::save_cringe, this, std::placeholders::_1));
 		task_select_ = create_subscription<std_msgs::msg::Float32>("/task_select", 10, std::bind(&MinimalPublisher::set_test, this, std::placeholders::_1));
 		mask_pub_ = create_publisher<autorace_communication_gazebo_ogry::msg::Mask>("/mask", 1);
@@ -83,10 +84,13 @@ private:
 	}
 	void save_cringe(const std_msgs::msg::Float32 &msg)
 	{
-		RCLCPP_INFO(this->get_logger(),"DA POHUY\n");
+		
 		iis.cringe = msg.data;
 	}
-	
+	void save_construct(const std_msgs::msg::Bool &msg)
+	{
+		iis.is_constract = msg.data;
+	}
 	void odom_save(const nav_msgs::msg::Odometry &msg) {
       auto p = msg.pose.pose.position;
       auto q = msg.pose.pose.orientation;
@@ -143,6 +147,7 @@ private:
 		auto hhh = this->get_logger();
 		iis.logger = &hhh;
 		iis.pos = position;
+	
 		//show->image.ptr<RGB8>(479-1)[(int)2]= {255,0,255};
 		
 		geometry_msgs::msg::Twist res;
@@ -217,6 +222,7 @@ private:
 	rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr max_vel_sub_;
 	rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr change_cringe_task_;
 	rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr task_select_;
+	rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr is_construct_;
 	rclcpp::Publisher<autorace_communication_gazebo_ogry::msg::Mask>::SharedPtr mask_pub_;
 };
 

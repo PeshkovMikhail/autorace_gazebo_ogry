@@ -87,6 +87,7 @@ public:
     cv::Mat image;
     cv::Mat mask;
     rclcpp::Logger* logger;
+    bool is_constract=false;
     
     cv_bridge::CvImagePtr show;
 
@@ -304,26 +305,25 @@ public:
     vec<float> stupid_work()
     {
         vec<float> res;
-        if (walls_cnt >=3)
+        if (walls_cnt >=2)
             return res;
         
-        if (lidar->ranges[0]<0.5)
+        if (lidar->ranges[0]<0.48)
             is_wall = true;
         
-        if (is_wall && walls_cnt!=0)
+        if (is_wall)
         {
-            RCLCPP_INFO(*logger,"STENA DETECTED");
+            RCLCPP_INFO(*logger,"STENA DETECTED %d",walls_cnt);
             res.x = 0;
             res.y = 1;
             res = res.rotate(-(walls_cnt*2-1)*(70.0f)/180*M_PI);
-            // cringe = 0.5 - (walls_cnt*2-1)*0.1;
+            // cringe = 0.5 - (walls_cnt*2-1)*0.05;
             // std::cout<<"SUKA TAM STENA POVORACHIVAY BLYAT'"<<res<<" "<<is_wall<<std::endl;
         }
         
         if (lidar->ranges[0]>0.6 && is_wall)
         {
-            is_wall = false;
-            walls_cnt+=1;
+            is_constract = false;
         }
             
         return res;
@@ -332,9 +332,13 @@ public:
 
     vec<float> mrv()
     {
-        // auto stupid = stupid_work();
-        // if (stupid.y!=0)
-        //     return stupid;
+        if (is_constract)
+        {
+            auto stupid = stupid_work();
+            if (stupid.y!=0)
+                return stupid;
+        }
+        
 
         cv::Mat mat(480, 848, CV_8UC1, cv::Scalar(0));
         cv::Mat wmask, ymask;
