@@ -86,6 +86,7 @@ public:
     float needed_angle=NAN;
     cv::Mat image;
     cv::Mat mask;
+    rclcpp::Logger* logger;
     
     cv_bridge::CvImagePtr show;
 
@@ -303,15 +304,19 @@ public:
     vec<float> stupid_work()
     {
         vec<float> res;
-        if (walls_cnt >=2)
+        if (walls_cnt >=3)
             return res;
+        
         if (lidar->ranges[0]<0.5)
-            is_wall = true;   
-        if (is_wall)
+            is_wall = true;
+        
+        if (is_wall && walls_cnt!=0)
         {
+            RCLCPP_INFO(*logger,"STENA DETECTED");
             res.x = 0;
             res.y = 1;
-            res = res.rotate((walls_cnt*2-1)*(70.0f+walls_cnt*60.0f)/180*M_PI);
+            res = res.rotate(-(walls_cnt*2-1)*(70.0f)/180*M_PI);
+            // cringe = 0.5 - (walls_cnt*2-1)*0.1;
             // std::cout<<"SUKA TAM STENA POVORACHIVAY BLYAT'"<<res<<" "<<is_wall<<std::endl;
         }
         
@@ -327,9 +332,9 @@ public:
 
     vec<float> mrv()
     {
-        auto stupid = stupid_work();
-        if (stupid.y!=0)
-            return stupid;
+        // auto stupid = stupid_work();
+        // if (stupid.y!=0)
+        //     return stupid;
 
         cv::Mat mat(480, 848, CV_8UC1, cv::Scalar(0));
         cv::Mat wmask, ymask;

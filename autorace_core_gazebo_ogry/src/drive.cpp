@@ -140,6 +140,8 @@ private:
 		iis.mask = mask;
 		iis.lidar = &lidar;
 		iis.angle = z_angle;
+		auto hhh = this->get_logger();
+		iis.logger = &hhh;
 		iis.pos = position;
 		//show->image.ptr<RGB8>(479-1)[(int)2]= {255,0,255};
 		

@@ -6,6 +6,7 @@
 #include "autorace_communication_gazebo_ogry/action/tunnel.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
+#include "std_msgs/msg/float32.hpp"
 #include "rclcpp_components/register_node_macro.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -45,6 +46,7 @@ using GoalHandleTunnel = rclcpp_action::ServerGoalHandle<Tunnel>;
         goal_pose_ = create_publisher<geometry_msgs::msg::PoseStamped>("/goal_pose", 10);
         vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         finished_ = create_publisher<std_msgs::msg::String>("/robot_finished", 10);
+        driver_line_prop_ = create_publisher<std_msgs::msg::Float32>("/change_cringe", 10);
         this->action_server_ = rclcpp_action::create_server<Tunnel>(
             this,
             "tunnel",
@@ -64,6 +66,7 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr vel_publisher_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr finished_;
     rclcpp_action::Server<Tunnel>::SharedPtr action_server_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr driver_line_prop_;
 
     float* depth = nullptr;
     sensor_msgs::msg::LaserScan lidar;
@@ -121,12 +124,25 @@ private:
     void execute(const std::shared_ptr<GoalHandleTunnel> goal_handle)
     {
         rclcpp::Rate loop_rate(50);
-
-        std_msgs::msg::Bool enabled;
-        enabled.data = false;
+        std_msgs::msg::Float32 lddf;
+        lddf.data = 0.6;
+        driver_line_prop_->publish(lddf);
 
         geometry_msgs::msg::Twist twist;
     
+
+        while(lidar.ranges[0]>0.2)
+        {
+            loop_rate.sleep();
+        }
+        twist.linear.x = 0;
+        twist.angular.z = M_PI/2;
+        vel_publisher_->publish(twist);
+        return;
+        std_msgs::msg::Bool enabled;
+        enabled.data = false;
+
+        
 
         twist.linear.x = 0.2;
         vel_publisher_->publish(twist);

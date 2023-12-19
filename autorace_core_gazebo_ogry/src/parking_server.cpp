@@ -151,7 +151,7 @@ private:
     
     
     auto start = get_clock()->now().seconds();
-    while(get_clock()->now().seconds() - start < 2.0) {
+    while(get_clock()->now().seconds() - start < 1.5) {
       loop_rate.sleep();
     }
 
